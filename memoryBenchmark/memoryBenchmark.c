@@ -17,13 +17,14 @@
 #define MS_VALUE (CPU_FRT_PAL_320_128_COUNT_1MS)
 #define FRT_MS_NUMBER (200)
 
+#define NUMBER_OF_TESTS 9
+
 struct timer;
 
 struct timer_event {
         uint32_t id;
 
         const struct timer *timer;
-        void *work;
         int32_t step;
 
         uint32_t next_interval;
@@ -33,7 +34,6 @@ struct timer {
         uint32_t interval; /* Time in milliseconds */
         void (*callback)(struct timer_event *);
         void (*callbackStep)(struct timer_event *);
-        void *work;
 } __packed;
 
 struct timer_state {
@@ -57,41 +57,161 @@ static void _frt_compare_output_handler(void);
 static void _timer_handler(struct timer_event *);
 static void _timer_step_handler(struct timer_event *);
 
-static volatile uint32_t _counter_1 = 0;
-static volatile uint32_t _counter_highw = 0;
-static volatile uint32_t _counter_loww = 0;
+static volatile uint32_t counter [NUMBER_OF_TESTS] = {0};
 
-typedef void (*testFunc) (void);
+static volatile uint8_t val8;
+static volatile uint16_t val16;
+static volatile uint32_t val32;
 
-static volatile testFunc memoryUnderTest = NULL;
+static volatile uint32_t testId = 0;
 
-static void testHighWRam() {
+typedef uint32_t (*testFunc) (void);
+
+typedef struct {
+  char name[20];
+  testFunc func;
+  volatile uint32_t* counter;
+} testsuite_t;
+
+static uint32_t testHighWRamByteWrite() {
   *((volatile uint8_t *)(0x26010100)) = 0xDE;
-  *((volatile uint8_t *)(0x26010101)) = 0xDE;
-  *((volatile uint8_t *)(0x26010102)) = 0xDE;
-  *((volatile uint8_t *)(0x26010103)) = 0xDE;
   *((volatile uint8_t *)(0x26010104)) = 0xDE;
-  *((volatile uint8_t *)(0x26010105)) = 0xDE;
-  *((volatile uint8_t *)(0x26010106)) = 0xDE;
-  *((volatile uint8_t *)(0x26010107)) = 0xDE;
   *((volatile uint8_t *)(0x26010108)) = 0xDE;
-  *((volatile uint8_t *)(0x26010109)) = 0xDE;
-  _counter_highw += 10;
+  *((volatile uint8_t *)(0x2601010C)) = 0xDE;
+  *((volatile uint8_t *)(0x26010110)) = 0xDE;
+  *((volatile uint8_t *)(0x26010114)) = 0xDE;
+  *((volatile uint8_t *)(0x26010118)) = 0xDE;
+  *((volatile uint8_t *)(0x2601011C)) = 0xDE;
+  *((volatile uint8_t *)(0x26010120)) = 0xDE;
+  *((volatile uint8_t *)(0x26010124)) = 0xDE;
+  return 10;
 }
 
-static void testLowWRam(void){
-  *((volatile uint8_t *)(0x20210100)) = 0xDE;
-  *((volatile uint8_t *)(0x20210101)) = 0xDE;
-  *((volatile uint8_t *)(0x20210102)) = 0xDE;
-  *((volatile uint8_t *)(0x20210103)) = 0xDE;
-  *((volatile uint8_t *)(0x20210104)) = 0xDE;
-  *((volatile uint8_t *)(0x20210105)) = 0xDE;
-  *((volatile uint8_t *)(0x20210106)) = 0xDE;
-  *((volatile uint8_t *)(0x20210107)) = 0xDE;
-  *((volatile uint8_t *)(0x20210108)) = 0xDE;
-  *((volatile uint8_t *)(0x20210109)) = 0xDE;
-  _counter_loww += 10;
+static uint32_t testHighWRamWordWrite() {
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010104)) = 0xDE;
+  *((volatile uint16_t *)(0x26010108)) = 0xDE;
+  *((volatile uint16_t *)(0x2601010C)) = 0xDE;
+  *((volatile uint16_t *)(0x26010110)) = 0xDE;
+  *((volatile uint16_t *)(0x26010114)) = 0xDE;
+  *((volatile uint16_t *)(0x26010118)) = 0xDE;
+  *((volatile uint16_t *)(0x2601011C)) = 0xDE;
+  *((volatile uint16_t *)(0x26010120)) = 0xDE;
+  *((volatile uint16_t *)(0x26010124)) = 0xDE;
+  return 10;
 }
+
+static uint32_t testHighWRamLongWrite() {
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010104)) = 0xDE;
+  *((volatile uint32_t *)(0x26010108)) = 0xDE;
+  *((volatile uint32_t *)(0x2601010C)) = 0xDE;
+  *((volatile uint32_t *)(0x26010110)) = 0xDE;
+  *((volatile uint32_t *)(0x26010114)) = 0xDE;
+  *((volatile uint32_t *)(0x26010118)) = 0xDE;
+  *((volatile uint32_t *)(0x2601011C)) = 0xDE;
+  *((volatile uint32_t *)(0x26010120)) = 0xDE;
+  *((volatile uint32_t *)(0x26010124)) = 0xDE;
+  return 10;
+}
+
+static uint32_t testHighWRamByteRead() {
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010104));
+  val8 = *((volatile uint8_t *)(0x26010108));
+  val8 = *((volatile uint8_t *)(0x2601010C));
+  val8 = *((volatile uint8_t *)(0x26010110));
+  val8 = *((volatile uint8_t *)(0x26010114));
+  val8 = *((volatile uint8_t *)(0x26010118));
+  val8 = *((volatile uint8_t *)(0x2601011C));
+  val8 = *((volatile uint8_t *)(0x26010120));
+  val8 = *((volatile uint8_t *)(0x26010124));
+  return 10;
+}
+
+static uint32_t testHighWRamWordRead() {
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010104));
+  val16 = *((volatile uint16_t *)(0x26010108));
+  val16 = *((volatile uint16_t *)(0x2601010C));
+  val16 = *((volatile uint16_t *)(0x26010110));
+  val16 = *((volatile uint16_t *)(0x26010114));
+  val16 = *((volatile uint16_t *)(0x26010118));
+  val16 = *((volatile uint16_t *)(0x2601011C));
+  val16 = *((volatile uint16_t *)(0x26010120));
+  val16 = *((volatile uint16_t *)(0x26010124));
+  return 10;
+}
+
+
+static uint32_t testHighWRamLongRead() {
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010104));
+  val32 = *((volatile uint32_t *)(0x26010108));
+  val32 = *((volatile uint32_t *)(0x2601010C));
+  val32 = *((volatile uint32_t *)(0x26010110));
+  val32 = *((volatile uint32_t *)(0x26010114));
+  val32 = *((volatile uint32_t *)(0x26010118));
+  val32 = *((volatile uint32_t *)(0x2601011C));
+  val32 = *((volatile uint32_t *)(0x26010120));
+  val32 = *((volatile uint32_t *)(0x26010124));
+  return 10;
+}
+
+
+static uint32_t testLowWRamByteWrite(void){
+  *((volatile uint8_t *)(0x20210100)) = 0xDE;
+  *((volatile uint8_t *)(0x20210104)) = 0xDE;
+  *((volatile uint8_t *)(0x20210108)) = 0xDE;
+  *((volatile uint8_t *)(0x2021010C)) = 0xDE;
+  *((volatile uint8_t *)(0x20210110)) = 0xDE;
+  *((volatile uint8_t *)(0x20210114)) = 0xDE;
+  *((volatile uint8_t *)(0x20210118)) = 0xDE;
+  *((volatile uint8_t *)(0x2021011C)) = 0xDE;
+  *((volatile uint8_t *)(0x20210120)) = 0xDE;
+  *((volatile uint8_t *)(0x20210124)) = 0xDE;
+  return 10;
+}
+
+static uint32_t testLowWRamWordWrite(void){
+  *((volatile uint16_t *)(0x20210100)) = 0xDE;
+  *((volatile uint16_t *)(0x20210104)) = 0xDE;
+  *((volatile uint16_t *)(0x20210108)) = 0xDE;
+  *((volatile uint16_t *)(0x2021010C)) = 0xDE;
+  *((volatile uint16_t *)(0x20210110)) = 0xDE;
+  *((volatile uint16_t *)(0x20210114)) = 0xDE;
+  *((volatile uint16_t *)(0x20210118)) = 0xDE;
+  *((volatile uint16_t *)(0x2021011C)) = 0xDE;
+  *((volatile uint16_t *)(0x20210120)) = 0xDE;
+  *((volatile uint16_t *)(0x20210124)) = 0xDE;
+  return 10;
+}
+
+static uint32_t testLowWRamLongWrite(void){
+  *((volatile uint32_t *)(0x20210100)) = 0xDE;
+  *((volatile uint32_t *)(0x20210104)) = 0xDE;
+  *((volatile uint32_t *)(0x20210108)) = 0xDE;
+  *((volatile uint32_t *)(0x2021010C)) = 0xDE;
+  *((volatile uint32_t *)(0x20210110)) = 0xDE;
+  *((volatile uint32_t *)(0x20210114)) = 0xDE;
+  *((volatile uint32_t *)(0x20210118)) = 0xDE;
+  *((volatile uint32_t *)(0x2021011C)) = 0xDE;
+  *((volatile uint32_t *)(0x20210120)) = 0xDE;
+  *((volatile uint32_t *)(0x20210124)) = 0xDE;
+  return 10;
+}
+
+testsuite_t tests[NUMBER_OF_TESTS] = {
+  {"HighRAM W Byte", testHighWRamByteWrite, &counter[0]},
+  {"HighRAM W Word", testHighWRamWordWrite, &counter[1]},
+  {"HighRAM W Long", testHighWRamLongWrite, &counter[2]},
+  {"HighRAM R Byte", testHighWRamByteRead,  &counter[3]},
+  {"HighRAM R Word", testHighWRamWordRead,  &counter[4]},
+  {"HighRAM R Long", testHighWRamLongRead,  &counter[5]},
+  {"LowRAM  W Byte", testLowWRamByteWrite,  &counter[6]},
+  {"LowRAM  W Word", testLowWRamWordWrite,  &counter[7]},
+  {"LowRAM  W Long", testLowWRamLongWrite,  &counter[8]},
+};
 
 void
 main(void)
@@ -106,17 +226,16 @@ main(void)
                 .interval = 1000/FRT_MS_NUMBER,
                 .callback = _timer_handler,
                 .callbackStep = _timer_step_handler,
-                .work = (void *)&_counter_1
         };
 
         _timer_add(&match1);
 
         cpu_cache_enable();
 
-        memoryUnderTest = testHighWRam;
+        testId = 0;
 
         while (true) {
-          memoryUnderTest();
+          *tests[testId].counter += tests[testId].func();
         }
 }
 
@@ -155,7 +274,6 @@ _frt_compare_output_handler(void)
 
                 event.id = timer_state->id;
                 event.timer = &timer_state->event;
-                event.work = timer_state->event.work;
                 event.next_interval = timer_state->event.interval;
                 event.step = count_diff;
 
@@ -303,28 +421,18 @@ exit:
 }
 
 static void
-_timer_handler(struct timer_event *event)
+_timer_handler(struct timer_event *event __unused)
 {
-        uint32_t *counter = (uint32_t *)event->work;
-
-        (*counter)++;
-
         dbgio_puts("[1;1H[2J");
+        for (int i=0; i< NUMBER_OF_TESTS; i++)
         dbgio_printf("\n"
-                     " HighWRam: %lu Byte/s\n"
-                     " LowWRam: %lu Byte/s\n",
-                     _counter_highw,
-                     _counter_loww);
+                    "%s : %lu access/s\n",
+                     tests[i].name,
+                     *tests[i].counter);
         dbgio_flush();
-        if (memoryUnderTest == testHighWRam) {
-          memoryUnderTest = testLowWRam;
-          _counter_loww = 0;
-        } else {
-          if (memoryUnderTest == testLowWRam) {
-            memoryUnderTest = testHighWRam;
-            _counter_highw = 0;
-          }
-        }
+        testId++;
+        testId %= NUMBER_OF_TESTS;
+        *tests[testId].counter = 0;
         vdp_sync();
         cpu_frt_count_set(0);
 }

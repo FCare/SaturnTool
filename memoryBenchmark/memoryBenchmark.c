@@ -14,6 +14,9 @@
 
 #define TIMER_MAX_TIMERS_COUNT 16
 
+#define MS_VALUE (CPU_FRT_PAL_320_128_COUNT_1MS)
+#define FRT_MS_NUMBER (200)
+
 struct timer;
 
 struct timer_event {
@@ -21,6 +24,7 @@ struct timer_event {
 
         const struct timer *timer;
         void *work;
+        int32_t step;
 
         uint32_t next_interval;
 } __packed;
@@ -28,6 +32,7 @@ struct timer_event {
 struct timer {
         uint32_t interval; /* Time in milliseconds */
         void (*callback)(struct timer_event *);
+        void (*callbackStep)(struct timer_event *);
         void *work;
 } __packed;
 
@@ -43,29 +48,25 @@ static struct timer_state _timer_states[TIMER_MAX_TIMERS_COUNT];
 static uint32_t _next_timer = 0;
 static uint32_t _id_count = 0;
 
-static volatile uint32_t _ovi_count = 0;
-static volatile uint32_t _ocb_count = 0;
-
 static void _timer_init(void);
 static int32_t _timer_add(const struct timer *);
 static int32_t _timer_remove(uint32_t) __unused;
 
 /* Master */
 static void _frt_compare_output_handler(void);
-static void _frt_ovi_handler(void);
-static void _frt_ocb_handler(void);
 static void _timer_handler(struct timer_event *);
-
-/* Slave */
-static void _slave_entry(void);
-static void _slave_frt_ovi_handler(void);
+static void _timer_step_handler(struct timer_event *);
 
 static volatile uint32_t _counter_1 = 0;
-static volatile uint32_t _counter_2 = 0;
-static volatile uint32_t _counter_3 = 0;
-static volatile uint32_t _counter_4 = 0;
+static volatile uint32_t _counter_highw = 0;
+static volatile uint32_t _counter_loww = 0;
 
-static volatile uint32_t _slave_ovi_counter __section(".uncached") = 0;
+enum {
+  HIGHWRAM,
+  LOWWRAM
+};
+
+static volatile uint8_t memoryUnderTest = HIGHWRAM;
 
 void
 main(void)
@@ -77,58 +78,47 @@ main(void)
         _timer_init();
 
         struct timer match1 __unused = {
-                .interval = 1000,
+                .interval = 1000/FRT_MS_NUMBER,
                 .callback = _timer_handler,
+                .callbackStep = _timer_step_handler,
                 .work = (void *)&_counter_1
         };
 
-        struct timer match2 __unused = {
-                .interval = 2000,
-                .callback = _timer_handler,
-                .work = (void *)&_counter_2
-        };
-
-        struct timer match3 __unused = {
-                .interval = 3,
-                .callback = _timer_handler,
-                .work = (void *)&_counter_3
-        };
-
-        struct timer match4 __unused = {
-                .interval = 500,
-                .callback = _timer_handler,
-                .work = (void *)&_counter_4
-        };
-
         _timer_add(&match1);
-        _timer_add(&match2);
-        _timer_add(&match3);
-        _timer_add(&match4);
 
-        cpu_dual_slave_notify();
+        cpu_cache_enable();
 
         while (true) {
-                dbgio_puts("[1;1H[2J");
-
-                dbgio_printf("\n"
-                             " counter_1: %18lu (1s)\n"
-                             " counter_2: %18lu (2s)\n"
-                             " counter_3: %18lu (3ms)\n"
-                             " counter_4: %18lu (.5s)\n"
-                             " ovi_count: %18lu\n"
-                             " ocb_count: %18lu\n"
-                             "\n"
-                             " slave_ovi_counter: %10lu\n",
-                             _counter_1,
-                             _counter_2,
-                             _counter_3,
-                             _counter_4,
-                             _ovi_count,
-                             _ocb_count,
-                             _slave_ovi_counter);
-
-                dbgio_flush();
-                vdp_sync();
+          switch(memoryUnderTest) {
+            case HIGHWRAM:
+              *((volatile uint8_t *)(0x26010100)) = 0xDE;
+              *((volatile uint8_t *)(0x26010101)) = 0xDE;
+              *((volatile uint8_t *)(0x26010102)) = 0xDE;
+              *((volatile uint8_t *)(0x26010103)) = 0xDE;
+              *((volatile uint8_t *)(0x26010104)) = 0xDE;
+              *((volatile uint8_t *)(0x26010105)) = 0xDE;
+              *((volatile uint8_t *)(0x26010106)) = 0xDE;
+              *((volatile uint8_t *)(0x26010107)) = 0xDE;
+              *((volatile uint8_t *)(0x26010108)) = 0xDE;
+              *((volatile uint8_t *)(0x26010109)) = 0xDE;
+              _counter_highw += 10;
+              break;
+            case LOWWRAM:
+              *((volatile uint8_t *)(0x20210100)) = 0xDE;
+              *((volatile uint8_t *)(0x20210101)) = 0xDE;
+              *((volatile uint8_t *)(0x20210102)) = 0xDE;
+              *((volatile uint8_t *)(0x20210103)) = 0xDE;
+              *((volatile uint8_t *)(0x20210104)) = 0xDE;
+              *((volatile uint8_t *)(0x20210105)) = 0xDE;
+              *((volatile uint8_t *)(0x20210106)) = 0xDE;
+              *((volatile uint8_t *)(0x20210107)) = 0xDE;
+              *((volatile uint8_t *)(0x20210108)) = 0xDE;
+              *((volatile uint8_t *)(0x20210109)) = 0xDE;
+              _counter_loww += 10;
+              break;
+            default:
+              break;
+          }
         }
 }
 
@@ -143,30 +133,7 @@ user_init(void)
 
         cpu_intc_mask_set(0);
 
-        cpu_dual_comm_mode_set(CPU_DUAL_ENTRY_POLLING);
-        cpu_dual_slave_set(_slave_entry);
-
         vdp2_tvmd_display_set();
-}
-
-static void
-_slave_entry(void)
-{
-        assert((cpu_dual_executor_get()) == CPU_SLAVE);
-
-        cpu_frt_init(CPU_FRT_CLOCK_DIV_128);
-        cpu_frt_count_set(0);
-        cpu_frt_ovi_set(_slave_frt_ovi_handler);
-        cpu_frt_interrupt_priority_set(CPU_FRT_INTERRUPT_PRIORITY_LEVEL);
-        cpu_intc_mask_set(0);
-
-        _slave_ovi_counter = 0;
-}
-
-static void
-_slave_frt_ovi_handler(void)
-{
-        _slave_ovi_counter++;
 }
 
 static void
@@ -176,7 +143,7 @@ _frt_compare_output_handler(void)
         frt_count = cpu_frt_count_get();
 
         int32_t count_diff __unused;
-        count_diff = frt_count - CPU_FRT_NTSC_320_8_COUNT_1MS;
+        count_diff = frt_count - (FRT_MS_NUMBER * MS_VALUE);
 
         if (count_diff >= 0) {
                 cpu_frt_count_set(count_diff);
@@ -185,7 +152,14 @@ _frt_compare_output_handler(void)
         uint32_t i;
         for (i = 0; i < TIMER_MAX_TIMERS_COUNT; i++) {
                 struct timer_state *timer_state;
+                struct timer_event event;
                 timer_state = &_timer_states[i];
+
+                event.id = timer_state->id;
+                event.timer = &timer_state->event;
+                event.work = timer_state->event.work;
+                event.next_interval = timer_state->event.interval;
+                event.step = count_diff;
 
                 /* Invalid timer */
                 if (!timer_state->valid) {
@@ -194,16 +168,13 @@ _frt_compare_output_handler(void)
 
                 timer_state->remaining--;
 
+                timer_state->event.callbackStep (&event);
+
                 if (timer_state->remaining != 0) {
                         continue;
                 }
 
-                struct timer_event event;
 
-                event.id = timer_state->id;
-                event.timer = &timer_state->event;
-                event.work = timer_state->event.work;
-                event.next_interval = timer_state->event.interval;
 
                 timer_state->event.callback (&event);
 
@@ -227,12 +198,10 @@ _timer_init(void)
                 _timer_states[timer].valid = false;
         }
 
-        cpu_frt_init(CPU_FRT_CLOCK_DIV_8);
-        cpu_frt_oca_set(CPU_FRT_NTSC_320_8_COUNT_1MS, _frt_compare_output_handler);
+        cpu_frt_init(CPU_FRT_CLOCK_DIV_128);
+        cpu_frt_oca_set((FRT_MS_NUMBER * MS_VALUE), _frt_compare_output_handler);
         /* Match every 9.525μs */
-        cpu_frt_ocb_set(32, _frt_ocb_handler);
         cpu_frt_count_set(0);
-        cpu_frt_ovi_set(_frt_ovi_handler);
         cpu_frt_interrupt_priority_set(CPU_FRT_INTERRUPT_PRIORITY_LEVEL);
 }
 
@@ -246,6 +215,10 @@ _timer_add(const struct timer *timer)
         cpu_intc_mask_set(15);
 
         if (timer->callback == NULL) {
+                return -1;
+        }
+
+        if (timer->callbackStep == NULL) {
                 return -1;
         }
 
@@ -332,23 +305,35 @@ exit:
 }
 
 static void
-_frt_ovi_handler(void)
-{
-        _ovi_count++;
-}
-
-static void
-_frt_ocb_handler(void)
-{
-        _ocb_count++;
-}
-
-static void
 _timer_handler(struct timer_event *event)
 {
         uint32_t *counter = (uint32_t *)event->work;
 
         (*counter)++;
 
-        /* Set the next interval to zero to cancel this timer */
+        dbgio_puts("[1;1H[2J");
+        dbgio_printf("\n"
+                     " HighWRam: %lu Byte/s\n"
+                     " LowWRam: %lu Byte/s\n",
+                     _counter_highw,
+                     _counter_loww);
+        dbgio_flush();
+        switch (memoryUnderTest) {
+          case HIGHWRAM:
+            memoryUnderTest = LOWWRAM;
+            _counter_loww = 0;
+            break;
+          case LOWWRAM:
+          default:
+            memoryUnderTest = HIGHWRAM;
+            _counter_highw = 0;
+            break;
+        }
+        vdp_sync();
+        cpu_frt_count_set(0);
+}
+
+static void _timer_step_handler(struct timer_event *event __unused)
+{
+
 }

@@ -61,12 +61,37 @@ static volatile uint32_t _counter_1 = 0;
 static volatile uint32_t _counter_highw = 0;
 static volatile uint32_t _counter_loww = 0;
 
-enum {
-  HIGHWRAM,
-  LOWWRAM
-};
+typedef void (*testFunc) (void);
 
-static volatile uint8_t memoryUnderTest = HIGHWRAM;
+static volatile testFunc memoryUnderTest = NULL;
+
+static void testHighWRam() {
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010101)) = 0xDE;
+  *((volatile uint8_t *)(0x26010102)) = 0xDE;
+  *((volatile uint8_t *)(0x26010103)) = 0xDE;
+  *((volatile uint8_t *)(0x26010104)) = 0xDE;
+  *((volatile uint8_t *)(0x26010105)) = 0xDE;
+  *((volatile uint8_t *)(0x26010106)) = 0xDE;
+  *((volatile uint8_t *)(0x26010107)) = 0xDE;
+  *((volatile uint8_t *)(0x26010108)) = 0xDE;
+  *((volatile uint8_t *)(0x26010109)) = 0xDE;
+  _counter_highw += 10;
+}
+
+static void testLowWRam(void){
+  *((volatile uint8_t *)(0x20210100)) = 0xDE;
+  *((volatile uint8_t *)(0x20210101)) = 0xDE;
+  *((volatile uint8_t *)(0x20210102)) = 0xDE;
+  *((volatile uint8_t *)(0x20210103)) = 0xDE;
+  *((volatile uint8_t *)(0x20210104)) = 0xDE;
+  *((volatile uint8_t *)(0x20210105)) = 0xDE;
+  *((volatile uint8_t *)(0x20210106)) = 0xDE;
+  *((volatile uint8_t *)(0x20210107)) = 0xDE;
+  *((volatile uint8_t *)(0x20210108)) = 0xDE;
+  *((volatile uint8_t *)(0x20210109)) = 0xDE;
+  _counter_loww += 10;
+}
 
 void
 main(void)
@@ -88,37 +113,10 @@ main(void)
 
         cpu_cache_enable();
 
+        memoryUnderTest = testHighWRam;
+
         while (true) {
-          switch(memoryUnderTest) {
-            case HIGHWRAM:
-              *((volatile uint8_t *)(0x26010100)) = 0xDE;
-              *((volatile uint8_t *)(0x26010101)) = 0xDE;
-              *((volatile uint8_t *)(0x26010102)) = 0xDE;
-              *((volatile uint8_t *)(0x26010103)) = 0xDE;
-              *((volatile uint8_t *)(0x26010104)) = 0xDE;
-              *((volatile uint8_t *)(0x26010105)) = 0xDE;
-              *((volatile uint8_t *)(0x26010106)) = 0xDE;
-              *((volatile uint8_t *)(0x26010107)) = 0xDE;
-              *((volatile uint8_t *)(0x26010108)) = 0xDE;
-              *((volatile uint8_t *)(0x26010109)) = 0xDE;
-              _counter_highw += 10;
-              break;
-            case LOWWRAM:
-              *((volatile uint8_t *)(0x20210100)) = 0xDE;
-              *((volatile uint8_t *)(0x20210101)) = 0xDE;
-              *((volatile uint8_t *)(0x20210102)) = 0xDE;
-              *((volatile uint8_t *)(0x20210103)) = 0xDE;
-              *((volatile uint8_t *)(0x20210104)) = 0xDE;
-              *((volatile uint8_t *)(0x20210105)) = 0xDE;
-              *((volatile uint8_t *)(0x20210106)) = 0xDE;
-              *((volatile uint8_t *)(0x20210107)) = 0xDE;
-              *((volatile uint8_t *)(0x20210108)) = 0xDE;
-              *((volatile uint8_t *)(0x20210109)) = 0xDE;
-              _counter_loww += 10;
-              break;
-            default:
-              break;
-          }
+          memoryUnderTest();
         }
 }
 
@@ -318,16 +316,14 @@ _timer_handler(struct timer_event *event)
                      _counter_highw,
                      _counter_loww);
         dbgio_flush();
-        switch (memoryUnderTest) {
-          case HIGHWRAM:
-            memoryUnderTest = LOWWRAM;
-            _counter_loww = 0;
-            break;
-          case LOWWRAM:
-          default:
-            memoryUnderTest = HIGHWRAM;
+        if (memoryUnderTest == testHighWRam) {
+          memoryUnderTest = testLowWRam;
+          _counter_loww = 0;
+        } else {
+          if (memoryUnderTest == testLowWRam) {
+            memoryUnderTest = testHighWRam;
             _counter_highw = 0;
-            break;
+          }
         }
         vdp_sync();
         cpu_frt_count_set(0);

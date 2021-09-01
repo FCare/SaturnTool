@@ -17,7 +17,7 @@
 #define MS_VALUE (CPU_FRT_PAL_320_128_COUNT_1MS)
 #define FRT_MS_NUMBER (200)
 
-#define NUMBER_OF_TESTS 9
+#define NUMBER_OF_TESTS 12
 
 struct timer;
 
@@ -160,44 +160,87 @@ static uint32_t testHighWRamLongRead() {
 
 
 static uint32_t testLowWRamByteWrite(void){
-  *((volatile uint8_t *)(0x20210100)) = 0xDE;
-  *((volatile uint8_t *)(0x20210104)) = 0xDE;
-  *((volatile uint8_t *)(0x20210108)) = 0xDE;
-  *((volatile uint8_t *)(0x2021010C)) = 0xDE;
-  *((volatile uint8_t *)(0x20210110)) = 0xDE;
-  *((volatile uint8_t *)(0x20210114)) = 0xDE;
-  *((volatile uint8_t *)(0x20210118)) = 0xDE;
-  *((volatile uint8_t *)(0x2021011C)) = 0xDE;
-  *((volatile uint8_t *)(0x20210120)) = 0xDE;
-  *((volatile uint8_t *)(0x20210124)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240104)) = 0xDE;
+  *((volatile uint8_t *)(0x20240108)) = 0xDE;
+  *((volatile uint8_t *)(0x2024010C)) = 0xDE;
+  *((volatile uint8_t *)(0x20240110)) = 0xDE;
+  *((volatile uint8_t *)(0x20240114)) = 0xDE;
+  *((volatile uint8_t *)(0x20240118)) = 0xDE;
+  *((volatile uint8_t *)(0x2024011C)) = 0xDE;
+  *((volatile uint8_t *)(0x20240120)) = 0xDE;
+  *((volatile uint8_t *)(0x20240124)) = 0xDE;
   return 10;
 }
 
 static uint32_t testLowWRamWordWrite(void){
-  *((volatile uint16_t *)(0x20210100)) = 0xDE;
-  *((volatile uint16_t *)(0x20210104)) = 0xDE;
-  *((volatile uint16_t *)(0x20210108)) = 0xDE;
-  *((volatile uint16_t *)(0x2021010C)) = 0xDE;
-  *((volatile uint16_t *)(0x20210110)) = 0xDE;
-  *((volatile uint16_t *)(0x20210114)) = 0xDE;
-  *((volatile uint16_t *)(0x20210118)) = 0xDE;
-  *((volatile uint16_t *)(0x2021011C)) = 0xDE;
-  *((volatile uint16_t *)(0x20210120)) = 0xDE;
-  *((volatile uint16_t *)(0x20210124)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240104)) = 0xDE;
+  *((volatile uint16_t *)(0x20240108)) = 0xDE;
+  *((volatile uint16_t *)(0x2024010C)) = 0xDE;
+  *((volatile uint16_t *)(0x20240110)) = 0xDE;
+  *((volatile uint16_t *)(0x20240114)) = 0xDE;
+  *((volatile uint16_t *)(0x20240118)) = 0xDE;
+  *((volatile uint16_t *)(0x2024011C)) = 0xDE;
+  *((volatile uint16_t *)(0x20240120)) = 0xDE;
+  *((volatile uint16_t *)(0x20240124)) = 0xDE;
   return 10;
 }
 
 static uint32_t testLowWRamLongWrite(void){
-  *((volatile uint32_t *)(0x20210100)) = 0xDE;
-  *((volatile uint32_t *)(0x20210104)) = 0xDE;
-  *((volatile uint32_t *)(0x20210108)) = 0xDE;
-  *((volatile uint32_t *)(0x2021010C)) = 0xDE;
-  *((volatile uint32_t *)(0x20210110)) = 0xDE;
-  *((volatile uint32_t *)(0x20210114)) = 0xDE;
-  *((volatile uint32_t *)(0x20210118)) = 0xDE;
-  *((volatile uint32_t *)(0x2021011C)) = 0xDE;
-  *((volatile uint32_t *)(0x20210120)) = 0xDE;
-  *((volatile uint32_t *)(0x20210124)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240104)) = 0xDE;
+  *((volatile uint32_t *)(0x20240108)) = 0xDE;
+  *((volatile uint32_t *)(0x2024010C)) = 0xDE;
+  *((volatile uint32_t *)(0x20240110)) = 0xDE;
+  *((volatile uint32_t *)(0x20240114)) = 0xDE;
+  *((volatile uint32_t *)(0x20240118)) = 0xDE;
+  *((volatile uint32_t *)(0x2024011C)) = 0xDE;
+  *((volatile uint32_t *)(0x20240120)) = 0xDE;
+  *((volatile uint32_t *)(0x20240124)) = 0xDE;
+  return 10;
+}
+
+static uint32_t testLowWRamByteRead() {
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240104));
+  val8 = *((volatile uint8_t *)(0x20240108));
+  val8 = *((volatile uint8_t *)(0x2024010C));
+  val8 = *((volatile uint8_t *)(0x20240110));
+  val8 = *((volatile uint8_t *)(0x20240114));
+  val8 = *((volatile uint8_t *)(0x20240118));
+  val8 = *((volatile uint8_t *)(0x2024011C));
+  val8 = *((volatile uint8_t *)(0x20240120));
+  val8 = *((volatile uint8_t *)(0x20240124));
+  return 10;
+}
+
+static uint32_t testLowWRamWordRead() {
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240104));
+  val16 = *((volatile uint16_t *)(0x20240108));
+  val16 = *((volatile uint16_t *)(0x2024010C));
+  val16 = *((volatile uint16_t *)(0x20240110));
+  val16 = *((volatile uint16_t *)(0x20240114));
+  val16 = *((volatile uint16_t *)(0x20240118));
+  val16 = *((volatile uint16_t *)(0x2024011C));
+  val16 = *((volatile uint16_t *)(0x20240120));
+  val16 = *((volatile uint16_t *)(0x20240124));
+  return 10;
+}
+
+
+static uint32_t testLowWRamLongRead() {
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240104));
+  val32 = *((volatile uint32_t *)(0x20240108));
+  val32 = *((volatile uint32_t *)(0x2024010C));
+  val32 = *((volatile uint32_t *)(0x20240110));
+  val32 = *((volatile uint32_t *)(0x20240114));
+  val32 = *((volatile uint32_t *)(0x20240118));
+  val32 = *((volatile uint32_t *)(0x2024011C));
+  val32 = *((volatile uint32_t *)(0x20240120));
+  val32 = *((volatile uint32_t *)(0x20240124));
   return 10;
 }
 
@@ -211,6 +254,9 @@ testsuite_t tests[NUMBER_OF_TESTS] = {
   {"LowRAM  W Byte", testLowWRamByteWrite,  &counter[6]},
   {"LowRAM  W Word", testLowWRamWordWrite,  &counter[7]},
   {"LowRAM  W Long", testLowWRamLongWrite,  &counter[8]},
+  {"LowRAM  R Byte", testLowWRamByteRead,  &counter[9]},
+  {"LowRAM  R Word", testLowWRamWordRead,  &counter[10]},
+  {"LowRAM  R Long", testLowWRamLongRead,  &counter[11]},
 };
 
 void
@@ -230,6 +276,7 @@ main(void)
 
         _timer_add(&match1);
 
+        cpu_cache_purge();
         cpu_cache_enable();
 
         testId = 0;

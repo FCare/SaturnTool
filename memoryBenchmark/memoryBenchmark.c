@@ -59,9 +59,9 @@ static void _timer_step_handler(struct timer_event *);
 
 static volatile uint32_t counter [NUMBER_OF_TESTS] = {0};
 
-static volatile uint8_t val8;
-static volatile uint16_t val16;
-static volatile uint32_t val32;
+static uint8_t val8;
+static uint16_t val16;
+static uint32_t val32;
 
 static volatile uint32_t testId = 0;
 

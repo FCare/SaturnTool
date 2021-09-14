@@ -259,6 +259,8 @@ testsuite_t tests[NUMBER_OF_TESTS] = {
   {"LowRAM  R Long", testLowWRamLongRead,  &counter[11]},
 };
 
+volatile bool testing = false;
+
 void
 main(void)
 {
@@ -280,9 +282,25 @@ main(void)
         cpu_cache_enable();
 
         testId = 0;
+        testing = true;
 
-        while (true) {
-          *tests[testId].counter += tests[testId].func();
+        while(true) {
+          while (testing) {
+            *tests[testId].counter += tests[testId].func();
+          }
+          dbgio_puts("[1;1H[2J");
+          for (int i=0; i< NUMBER_OF_TESTS; i++)
+          dbgio_printf("\n"
+                      "%s : %lu access/s\n",
+                       tests[i].name,
+                       *tests[i].counter);
+          dbgio_flush();
+          testId++;
+          testId %= NUMBER_OF_TESTS;
+          *tests[testId].counter = 0;
+          vdp_sync();
+          cpu_frt_count_set(0);
+          testing = true;
         }
 }
 
@@ -470,18 +488,7 @@ exit:
 static void
 _timer_handler(struct timer_event *event __unused)
 {
-        dbgio_puts("[1;1H[2J");
-        for (int i=0; i< NUMBER_OF_TESTS; i++)
-        dbgio_printf("\n"
-                    "%s : %lu access/s\n",
-                     tests[i].name,
-                     *tests[i].counter);
-        dbgio_flush();
-        testId++;
-        testId %= NUMBER_OF_TESTS;
-        *tests[testId].counter = 0;
-        vdp_sync();
-        cpu_frt_count_set(0);
+  testing = false;
 }
 
 static void _timer_step_handler(struct timer_event *event __unused)

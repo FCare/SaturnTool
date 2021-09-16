@@ -75,172 +75,172 @@ typedef struct {
 
 static uint32_t testHighWRamByteWrite() {
   *((volatile uint8_t *)(0x26010100)) = 0xDE;
-  *((volatile uint8_t *)(0x26010104)) = 0xDE;
-  *((volatile uint8_t *)(0x26010108)) = 0xDE;
-  *((volatile uint8_t *)(0x2601010C)) = 0xDE;
-  *((volatile uint8_t *)(0x26010110)) = 0xDE;
-  *((volatile uint8_t *)(0x26010114)) = 0xDE;
-  *((volatile uint8_t *)(0x26010118)) = 0xDE;
-  *((volatile uint8_t *)(0x2601011C)) = 0xDE;
-  *((volatile uint8_t *)(0x26010120)) = 0xDE;
-  *((volatile uint8_t *)(0x26010124)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
+  *((volatile uint8_t *)(0x26010100)) = 0xDE;
   return 10;
 }
 
 static uint32_t testHighWRamWordWrite() {
   *((volatile uint16_t *)(0x26010100)) = 0xDE;
-  *((volatile uint16_t *)(0x26010104)) = 0xDE;
-  *((volatile uint16_t *)(0x26010108)) = 0xDE;
-  *((volatile uint16_t *)(0x2601010C)) = 0xDE;
-  *((volatile uint16_t *)(0x26010110)) = 0xDE;
-  *((volatile uint16_t *)(0x26010114)) = 0xDE;
-  *((volatile uint16_t *)(0x26010118)) = 0xDE;
-  *((volatile uint16_t *)(0x2601011C)) = 0xDE;
-  *((volatile uint16_t *)(0x26010120)) = 0xDE;
-  *((volatile uint16_t *)(0x26010124)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
+  *((volatile uint16_t *)(0x26010100)) = 0xDE;
   return 10;
 }
 
 static uint32_t testHighWRamLongWrite() {
   *((volatile uint32_t *)(0x26010100)) = 0xDE;
-  *((volatile uint32_t *)(0x26010104)) = 0xDE;
-  *((volatile uint32_t *)(0x26010108)) = 0xDE;
-  *((volatile uint32_t *)(0x2601010C)) = 0xDE;
-  *((volatile uint32_t *)(0x26010110)) = 0xDE;
-  *((volatile uint32_t *)(0x26010114)) = 0xDE;
-  *((volatile uint32_t *)(0x26010118)) = 0xDE;
-  *((volatile uint32_t *)(0x2601011C)) = 0xDE;
-  *((volatile uint32_t *)(0x26010120)) = 0xDE;
-  *((volatile uint32_t *)(0x26010124)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
+  *((volatile uint32_t *)(0x26010100)) = 0xDE;
   return 10;
 }
 
 static uint32_t testHighWRamByteRead() {
   val8 = *((volatile uint8_t *)(0x26010100));
-  val8 = *((volatile uint8_t *)(0x26010104));
-  val8 = *((volatile uint8_t *)(0x26010108));
-  val8 = *((volatile uint8_t *)(0x2601010C));
-  val8 = *((volatile uint8_t *)(0x26010110));
-  val8 = *((volatile uint8_t *)(0x26010114));
-  val8 = *((volatile uint8_t *)(0x26010118));
-  val8 = *((volatile uint8_t *)(0x2601011C));
-  val8 = *((volatile uint8_t *)(0x26010120));
-  val8 = *((volatile uint8_t *)(0x26010124));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
+  val8 = *((volatile uint8_t *)(0x26010100));
   return 10;
 }
 
 static uint32_t testHighWRamWordRead() {
   val16 = *((volatile uint16_t *)(0x26010100));
-  val16 = *((volatile uint16_t *)(0x26010104));
-  val16 = *((volatile uint16_t *)(0x26010108));
-  val16 = *((volatile uint16_t *)(0x2601010C));
-  val16 = *((volatile uint16_t *)(0x26010110));
-  val16 = *((volatile uint16_t *)(0x26010114));
-  val16 = *((volatile uint16_t *)(0x26010118));
-  val16 = *((volatile uint16_t *)(0x2601011C));
-  val16 = *((volatile uint16_t *)(0x26010120));
-  val16 = *((volatile uint16_t *)(0x26010124));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
+  val16 = *((volatile uint16_t *)(0x26010100));
   return 10;
 }
 
 
 static uint32_t testHighWRamLongRead() {
   val32 = *((volatile uint32_t *)(0x26010100));
-  val32 = *((volatile uint32_t *)(0x26010104));
-  val32 = *((volatile uint32_t *)(0x26010108));
-  val32 = *((volatile uint32_t *)(0x2601010C));
-  val32 = *((volatile uint32_t *)(0x26010110));
-  val32 = *((volatile uint32_t *)(0x26010114));
-  val32 = *((volatile uint32_t *)(0x26010118));
-  val32 = *((volatile uint32_t *)(0x2601011C));
-  val32 = *((volatile uint32_t *)(0x26010120));
-  val32 = *((volatile uint32_t *)(0x26010124));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
+  val32 = *((volatile uint32_t *)(0x26010100));
   return 10;
 }
 
 
 static uint32_t testLowWRamByteWrite(void){
   *((volatile uint8_t *)(0x20240100)) = 0xDE;
-  *((volatile uint8_t *)(0x20240104)) = 0xDE;
-  *((volatile uint8_t *)(0x20240108)) = 0xDE;
-  *((volatile uint8_t *)(0x2024010C)) = 0xDE;
-  *((volatile uint8_t *)(0x20240110)) = 0xDE;
-  *((volatile uint8_t *)(0x20240114)) = 0xDE;
-  *((volatile uint8_t *)(0x20240118)) = 0xDE;
-  *((volatile uint8_t *)(0x2024011C)) = 0xDE;
-  *((volatile uint8_t *)(0x20240120)) = 0xDE;
-  *((volatile uint8_t *)(0x20240124)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
+  *((volatile uint8_t *)(0x20240100)) = 0xDE;
   return 10;
 }
 
 static uint32_t testLowWRamWordWrite(void){
   *((volatile uint16_t *)(0x20240100)) = 0xDE;
-  *((volatile uint16_t *)(0x20240104)) = 0xDE;
-  *((volatile uint16_t *)(0x20240108)) = 0xDE;
-  *((volatile uint16_t *)(0x2024010C)) = 0xDE;
-  *((volatile uint16_t *)(0x20240110)) = 0xDE;
-  *((volatile uint16_t *)(0x20240114)) = 0xDE;
-  *((volatile uint16_t *)(0x20240118)) = 0xDE;
-  *((volatile uint16_t *)(0x2024011C)) = 0xDE;
-  *((volatile uint16_t *)(0x20240120)) = 0xDE;
-  *((volatile uint16_t *)(0x20240124)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
+  *((volatile uint16_t *)(0x20240100)) = 0xDE;
   return 10;
 }
 
 static uint32_t testLowWRamLongWrite(void){
   *((volatile uint32_t *)(0x20240100)) = 0xDE;
-  *((volatile uint32_t *)(0x20240104)) = 0xDE;
-  *((volatile uint32_t *)(0x20240108)) = 0xDE;
-  *((volatile uint32_t *)(0x2024010C)) = 0xDE;
-  *((volatile uint32_t *)(0x20240110)) = 0xDE;
-  *((volatile uint32_t *)(0x20240114)) = 0xDE;
-  *((volatile uint32_t *)(0x20240118)) = 0xDE;
-  *((volatile uint32_t *)(0x2024011C)) = 0xDE;
-  *((volatile uint32_t *)(0x20240120)) = 0xDE;
-  *((volatile uint32_t *)(0x20240124)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
+  *((volatile uint32_t *)(0x20240100)) = 0xDE;
   return 10;
 }
 
 static uint32_t testLowWRamByteRead() {
   val8 = *((volatile uint8_t *)(0x20240100));
-  val8 = *((volatile uint8_t *)(0x20240104));
-  val8 = *((volatile uint8_t *)(0x20240108));
-  val8 = *((volatile uint8_t *)(0x2024010C));
-  val8 = *((volatile uint8_t *)(0x20240110));
-  val8 = *((volatile uint8_t *)(0x20240114));
-  val8 = *((volatile uint8_t *)(0x20240118));
-  val8 = *((volatile uint8_t *)(0x2024011C));
-  val8 = *((volatile uint8_t *)(0x20240120));
-  val8 = *((volatile uint8_t *)(0x20240124));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
+  val8 = *((volatile uint8_t *)(0x20240100));
   return 10;
 }
 
 static uint32_t testLowWRamWordRead() {
   val16 = *((volatile uint16_t *)(0x20240100));
-  val16 = *((volatile uint16_t *)(0x20240104));
-  val16 = *((volatile uint16_t *)(0x20240108));
-  val16 = *((volatile uint16_t *)(0x2024010C));
-  val16 = *((volatile uint16_t *)(0x20240110));
-  val16 = *((volatile uint16_t *)(0x20240114));
-  val16 = *((volatile uint16_t *)(0x20240118));
-  val16 = *((volatile uint16_t *)(0x2024011C));
-  val16 = *((volatile uint16_t *)(0x20240120));
-  val16 = *((volatile uint16_t *)(0x20240124));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
+  val16 = *((volatile uint16_t *)(0x20240100));
   return 10;
 }
 
 
 static uint32_t testLowWRamLongRead() {
   val32 = *((volatile uint32_t *)(0x20240100));
-  val32 = *((volatile uint32_t *)(0x20240104));
-  val32 = *((volatile uint32_t *)(0x20240108));
-  val32 = *((volatile uint32_t *)(0x2024010C));
-  val32 = *((volatile uint32_t *)(0x20240110));
-  val32 = *((volatile uint32_t *)(0x20240114));
-  val32 = *((volatile uint32_t *)(0x20240118));
-  val32 = *((volatile uint32_t *)(0x2024011C));
-  val32 = *((volatile uint32_t *)(0x20240120));
-  val32 = *((volatile uint32_t *)(0x20240124));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
+  val32 = *((volatile uint32_t *)(0x20240100));
   return 10;
 }
 
@@ -289,7 +289,10 @@ main(void)
             *tests[testId].counter += tests[testId].func();
           }
           dbgio_puts("[1;1H[2J");
-          for (int i=0; i< NUMBER_OF_TESTS; i++)
+          int start = (testId/10)*10;
+          int end = (testId/10)*10 + 10;
+          if (end > NUMBER_OF_TESTS) end = NUMBER_OF_TESTS;
+          for (int i=start; i< end; i++)
           dbgio_printf("\n"
                       "%s : %lu access/s\n",
                        tests[i].name,

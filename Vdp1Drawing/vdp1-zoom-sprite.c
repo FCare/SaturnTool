@@ -29,6 +29,10 @@
 #define VDP1_CMDT_ORDER_DRAW_END_INDEX                  6
 #define VDP1_CMDT_ORDER_COUNT                           7
 
+
+#define TEXTURE_BASE (_vdp1_vram_partitions.texture_base)
+#define TEXTURE_PAL ((void *)VDP2_CRAM_MODE_1_OFFSET(1, 0, 0x0000))
+
 extern uint8_t root_romdisk[];
 
 static struct {
@@ -49,7 +53,10 @@ static void _init(void);
 
 static void _cmdt_list_init(void);
 
-static void _sprite_init(int id, int x, int y, int w, int h);
+static void textureInit();
+static void _sprite_normal_init(int id, int x, int y, int w, int h);
+static void _sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h);
+static void _sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h);
 
 static uint32_t _frame_time_calculate(void);
 
@@ -145,10 +152,19 @@ _cmdt_list_init(void)
         vdp1_cmdt_t * const cmdts =
             &_cmdt_list->cmdts[0];
 
-        _sprite_init(VDP1_CMDT_ORDER_NORMAL_INDEX, -SCREEN_WIDTH/4, -SCREEN_HEIGHT/4, SPRITE_WIDTH, SPRITE_WIDTH );
-        _sprite_init(VDP1_CMDT_ORDER_NORMAL_INDEX+1, -SCREEN_WIDTH/4, SCREEN_HEIGHT/4, SPRITE_WIDTH, SPRITE_WIDTH );
-        _sprite_init(VDP1_CMDT_ORDER_NORMAL_INDEX+2, SCREEN_WIDTH/4, SCREEN_HEIGHT/4, SPRITE_WIDTH, SPRITE_WIDTH );
-        _sprite_init(VDP1_CMDT_ORDER_NORMAL_INDEX+3, SCREEN_WIDTH/4, -SCREEN_HEIGHT/4, SPRITE_WIDTH, SPRITE_WIDTH );
+        textureInit();
+        _sprite_normal_init(VDP1_CMDT_ORDER_NORMAL_INDEX, -SCREEN_WIDTH/4, -SCREEN_HEIGHT/4, SPRITE_WIDTH, SPRITE_HEIGHT );
+        _sprite_scale_init(VDP1_CMDT_ORDER_NORMAL_INDEX+1,
+              -SCREEN_WIDTH/4 - SPRITE_WIDTH/4, SCREEN_HEIGHT/4 - SPRITE_HEIGHT/4, //A
+              -SCREEN_WIDTH/4 + SPRITE_WIDTH/4, SCREEN_HEIGHT/4 + SPRITE_HEIGHT/4, //C
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+        _sprite_distorted_init(VDP1_CMDT_ORDER_NORMAL_INDEX+2,
+              SCREEN_WIDTH/4 - SPRITE_WIDTH/4, SCREEN_HEIGHT/4 - SPRITE_HEIGHT/4, //A
+              SCREEN_WIDTH/4 + SPRITE_WIDTH/4, SCREEN_HEIGHT/4 - SPRITE_HEIGHT/4, //B
+              SCREEN_WIDTH/4 + SPRITE_WIDTH/4, SCREEN_HEIGHT/4 + SPRITE_HEIGHT/4, //C
+              SCREEN_WIDTH/4 - SPRITE_WIDTH/4, SCREEN_HEIGHT/4 + SPRITE_HEIGHT/4, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+        _sprite_normal_init(VDP1_CMDT_ORDER_NORMAL_INDEX+3, SCREEN_WIDTH/4, -SCREEN_HEIGHT/4, SPRITE_WIDTH, SPRITE_HEIGHT );
 
         vdp1_cmdt_system_clip_coord_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX]);
         vdp1_cmdt_param_vertex_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX],
@@ -195,8 +211,34 @@ _frame_time_calculate(void)
         return result;
 }
 
+static int loaded = 0;
+static void textureInit() {
+  if (loaded == 0) {
+
+    void *fh[2];
+    void *p;
+    size_t len;
+
+    fh[0] = romdisk_open(_romdisk, ZOOM_TEX_PATH);
+    assert(fh[0] != NULL);
+    p = romdisk_direct(fh[0]);
+    len = romdisk_total(fh[0]);
+    scu_dma_transfer(0, TEXTURE_BASE, p, len);
+
+    fh[1] = romdisk_open(_romdisk, ZOOM_PAL_PATH);
+    assert(fh[1] != NULL);
+    p = romdisk_direct(fh[1]);
+    len = romdisk_total(fh[1]);
+    scu_dma_transfer(0, TEXTURE_PAL, p, len);
+
+    romdisk_close(fh[0]);
+    romdisk_close(fh[1]);
+    loaded = 1;
+  }
+}
+
 static void
-_sprite_init(int id, int x, int y, int w, int h)
+_sprite_normal_init(int id, int x, int y, int w, int h)
 {
         const vdp1_cmdt_draw_mode_t draw_mode = {
                 .bits.trans_pixel_disable = true,
@@ -212,38 +254,86 @@ _sprite_init(int id, int x, int y, int w, int h)
         _position.y = y-h/2;
         _sprite.cmdt = &_cmdt_list->cmdts[id];
 
-        _sprite.tex_base = _vdp1_vram_partitions.texture_base;
-        _sprite.pal_base = (void *)VDP2_CRAM_MODE_1_OFFSET(1, 0, 0x0000);
+        _sprite.tex_base = TEXTURE_BASE;
+        _sprite.pal_base = TEXTURE_PAL;
 
         vdp1_cmdt_normal_sprite_set(_sprite.cmdt);
         vdp1_cmdt_param_char_base_set(_sprite.cmdt, (uint32_t)_sprite.tex_base);
         vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_NORMAL_SPRITE, &_position);
         vdp1_cmdt_param_size_set(_sprite.cmdt, w, h);
 
-
-
         vdp1_cmdt_param_draw_mode_set(_sprite.cmdt, draw_mode);
         vdp1_cmdt_param_color_mode4_set(_sprite.cmdt, color_bank);
+}
 
+static void
+_sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h) {
+  const vdp1_cmdt_draw_mode_t draw_mode = {
+          .bits.trans_pixel_disable = true,
+          .bits.pre_clipping_disable = true,
+          .bits.end_code_disable = true
+  };
 
-        void *fh[2];
-        void *p;
-        size_t len;
+  const vdp1_cmdt_color_bank_t color_bank = {
+          .type_0.data.dc = 0x0100
+  };
+  int16_vec2_t _position;
+  _sprite.cmdt = &_cmdt_list->cmdts[id];
 
-        fh[0] = romdisk_open(_romdisk, ZOOM_TEX_PATH);
-        assert(fh[0] != NULL);
-        p = romdisk_direct(fh[0]);
-        len = romdisk_total(fh[0]);
-        scu_dma_transfer(0, _sprite.tex_base, p, len);
+  _sprite.tex_base = TEXTURE_BASE;
+  _sprite.pal_base = (void *)TEXTURE_PAL;
 
-        fh[1] = romdisk_open(_romdisk, ZOOM_PAL_PATH);
-        assert(fh[1] != NULL);
-        p = romdisk_direct(fh[1]);
-        len = romdisk_total(fh[1]);
-        scu_dma_transfer(0, _sprite.pal_base, p, len);
+  vdp1_cmdt_scaled_sprite_set(_sprite.cmdt);
+  vdp1_cmdt_param_char_base_set(_sprite.cmdt, (uint32_t)_sprite.tex_base);
+  _position.x = x0;
+  _position.y = y0;
+  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_SCALE_SPRITE_UL, &_position);
+  _position.x = x1;
+  _position.y = y1;
+  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_SCALE_SPRITE_LR, &_position);
+  vdp1_cmdt_param_size_set(_sprite.cmdt, w, h);
 
-        romdisk_close(fh[0]);
-        romdisk_close(fh[1]);
+  vdp1_cmdt_param_draw_mode_set(_sprite.cmdt, draw_mode);
+  vdp1_cmdt_param_color_mode4_set(_sprite.cmdt, color_bank);
+
+}
+
+static void
+_sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h) {
+  const vdp1_cmdt_draw_mode_t draw_mode = {
+          .bits.trans_pixel_disable = true,
+          .bits.pre_clipping_disable = true,
+          .bits.end_code_disable = true
+  };
+
+  const vdp1_cmdt_color_bank_t color_bank = {
+          .type_0.data.dc = 0x0100
+  };
+  int16_vec2_t _position;
+  _sprite.cmdt = &_cmdt_list->cmdts[id];
+
+  _sprite.tex_base = TEXTURE_BASE;
+  _sprite.pal_base = (void *)TEXTURE_PAL;
+
+  vdp1_cmdt_distorted_sprite_set(_sprite.cmdt);
+  vdp1_cmdt_param_char_base_set(_sprite.cmdt, (uint32_t)_sprite.tex_base);
+  _position.x = xa;
+  _position.y = ya;
+  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_A, &_position);
+  _position.x = xb;
+  _position.y = yb;
+  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_B, &_position);
+  _position.x = xc;
+  _position.y = yc;
+  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_C, &_position);
+  _position.x = xd;
+  _position.y = yd;
+  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_D, &_position);
+  vdp1_cmdt_param_size_set(_sprite.cmdt, w, h);
+
+  vdp1_cmdt_param_draw_mode_set(_sprite.cmdt, draw_mode);
+  vdp1_cmdt_param_color_mode4_set(_sprite.cmdt, color_bank);
+
 }
 
 static void

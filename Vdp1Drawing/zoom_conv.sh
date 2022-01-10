@@ -9,10 +9,10 @@ PNG_OPTS="-define png:include-chunk=none -strip"
 cd data
 rm -f zoom_[0-9][0-9].png
 rm -f zoom_appended.png
-for x in `seq 0 13`; do
+for x in `seq 0 0`; do
     zoom=`echo "$x*75" | bc`
     in=`printf "zoom_%02i.png" "$x"`
-    convert -extract 64x128+"${zoom}"+0 "zoom.png" +repage -size 64x128 ${PNG_OPTS} "${in}"
+    convert -extract 64x64+"${zoom}"+0 "zoom.png" +repage -size 64x64 ${PNG_OPTS} "${in}"
 done
 convert -append zoom_*.png ${PNG_OPTS} zoom_appended.png
 cd ..

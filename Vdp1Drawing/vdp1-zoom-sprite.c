@@ -23,7 +23,7 @@
 #define SPRITE_COLOR_WAIT           COLOR_RGB1555(1, 31,  0,  0)
 #define SPRITE_COLOR_HIGHLIGHT      COLOR_RGB1555(1,  0, 31,  0)
 
-#define NB_TEST 8
+#define NB_TEST 10
 
 #define VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX        0
 #define VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX              1
@@ -160,41 +160,56 @@ _cmdt_list_init(void)
               80, 8, //A
               112, 40, //C
               SPRITE_WIDTH, SPRITE_HEIGHT );
+        //Same distorted than scale
         _sprite_distorted_init(idsprite++,
               120, 8, //A
               152, 8, //B
               152, 40, //C
               120, 40, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
-
+        //Same distorted than scale but rotated 90degrees
         _sprite_distorted_init(idsprite++,
               160, 40, //A
               160, 8, //B
               192, 8, //C
               192, 40, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
-
+        //Point
+        _sprite_distorted_init(idsprite++,
+              194, 8, //A
+              194, 8, //B
+              194, 8, //C
+              194, 8, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+        //Horizontal line
         _sprite_distorted_init(idsprite++,
               200, 8, //A
               232, 8, //B
               232, 8, //C
               200, 8, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
-
+        //Vertical line
         _sprite_distorted_init(idsprite++,
               240, 8, //A
               240, 40, //B
               240, 40, //C
               240, 8, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
-
+        //Vertical line different
+        _sprite_distorted_init(idsprite++,
+              260, 8, //A
+              260, 8, //G
+              260, 40, //C
+              260, 40, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+        //Diagonal line
         _sprite_distorted_init(idsprite++,
               248, 8, //A
               280, 40, //B
               280, 40, //C
               248, 8, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
-
+        //Same distorted than scale but rotated 45degrees
         _sprite_distorted_init(idsprite++,
               288, 24, //A
               304, 8, //B

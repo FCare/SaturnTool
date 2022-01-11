@@ -23,11 +23,13 @@
 #define SPRITE_COLOR_WAIT           COLOR_RGB1555(1, 31,  0,  0)
 #define SPRITE_COLOR_HIGHLIGHT      COLOR_RGB1555(1,  0, 31,  0)
 
+#define NB_TEST 7
+
 #define VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX        0
 #define VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX              1
 #define VDP1_CMDT_ORDER_NORMAL_INDEX                    2
-#define VDP1_CMDT_ORDER_DRAW_END_INDEX                  7
-#define VDP1_CMDT_ORDER_COUNT                           8
+#define VDP1_CMDT_ORDER_DRAW_END_INDEX                  (VDP1_CMDT_ORDER_NORMAL_INDEX + NB_TEST)
+#define VDP1_CMDT_ORDER_COUNT                           (VDP1_CMDT_ORDER_DRAW_END_INDEX + 1)
 
 
 #define TEXTURE_BASE (_vdp1_vram_partitions.texture_base)
@@ -151,31 +153,46 @@ _cmdt_list_init(void)
         vdp1_cmdt_t * const cmdts =
             &_cmdt_list->cmdts[0];
 
+        int idsprite = VDP1_CMDT_ORDER_NORMAL_INDEX;
         textureInit();
-        _sprite_normal_init(VDP1_CMDT_ORDER_NORMAL_INDEX, 40, 40, SPRITE_WIDTH, SPRITE_HEIGHT );
-        _sprite_scale_init(VDP1_CMDT_ORDER_NORMAL_INDEX+1,
+        _sprite_normal_init(idsprite++, 40, 40, SPRITE_WIDTH, SPRITE_HEIGHT );
+        _sprite_scale_init(idsprite++,
               80, 8, //A
               112, 40, //C
               SPRITE_WIDTH, SPRITE_HEIGHT );
-        _sprite_distorted_init(VDP1_CMDT_ORDER_NORMAL_INDEX+2,
+        _sprite_distorted_init(idsprite++,
               120, 8, //A
               152, 8, //B
               152, 40, //C
               120, 40, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
 
-        _sprite_distorted_init(VDP1_CMDT_ORDER_NORMAL_INDEX+3,
+        _sprite_distorted_init(idsprite++,
               160, 40, //A
               160, 8, //B
               192, 8, //C
               192, 40, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
 
-        _sprite_distorted_init(VDP1_CMDT_ORDER_NORMAL_INDEX+4,
+        _sprite_distorted_init(idsprite++,
               200, 8, //A
-              232, 40, //B
-              232, 40, //C
+              232, 8, //B
+              232, 8, //C
               200, 8, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+
+        _sprite_distorted_init(idsprite++,
+              240, 8, //A
+              240, 40, //B
+              240, 40, //C
+              240, 8, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+
+        _sprite_distorted_init(idsprite++,
+              248, 8, //A
+              280, 40, //B
+              280, 40, //C
+              248, 8, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
 
         vdp1_cmdt_system_clip_coord_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX]);

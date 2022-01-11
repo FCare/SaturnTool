@@ -176,10 +176,10 @@ _cmdt_list_init(void)
               SPRITE_WIDTH, SPRITE_HEIGHT );
         //Point
         _sprite_distorted_init(idsprite++,
-              194, 8, //A
-              194, 8, //B
-              194, 8, //C
-              194, 8, //D
+              194, 48, //A
+              194, 48, //B
+              194, 48, //C
+              194, 48, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
         //Horizontal line
         _sprite_distorted_init(idsprite++,
@@ -204,10 +204,10 @@ _cmdt_list_init(void)
               SPRITE_WIDTH, SPRITE_HEIGHT );
         //Diagonal line
         _sprite_distorted_init(idsprite++,
-              248, 8, //A
-              280, 40, //B
-              280, 40, //C
-              248, 8, //D
+              248, 48, //A
+              280, 80, //B
+              280, 80, //C
+              248, 48, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
         //Same distorted than scale but rotated 45degrees
         _sprite_distorted_init(idsprite++,

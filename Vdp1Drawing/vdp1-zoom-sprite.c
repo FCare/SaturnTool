@@ -23,7 +23,7 @@
 #define SPRITE_COLOR_WAIT           COLOR_RGB1555(1, 31,  0,  0)
 #define SPRITE_COLOR_HIGHLIGHT      COLOR_RGB1555(1,  0, 31,  0)
 
-#define NB_TEST 10
+#define NB_TEST 14
 
 #define VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX        0
 #define VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX              1
@@ -188,6 +188,14 @@ _cmdt_list_init(void)
               232, 8, //C
               200, 8, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
+
+          //Horizontal line 2 pixels
+          _sprite_distorted_init(idsprite++,
+                200, 16, //A
+                232, 16, //B
+                232, 17, //C
+                200, 17, //D
+                SPRITE_WIDTH, SPRITE_HEIGHT );
         //Vertical line
         _sprite_distorted_init(idsprite++,
               240, 8, //A
@@ -198,9 +206,16 @@ _cmdt_list_init(void)
         //Vertical line different
         _sprite_distorted_init(idsprite++,
               260, 8, //A
-              260, 8, //G
+              260, 8, //B
               260, 40, //C
               260, 40, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+        //Vertical line different
+        _sprite_distorted_init(idsprite++,
+              264, 8, //A
+              264, 24, //B
+              264, 24, //C
+              264, 40, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
         //Diagonal line
         _sprite_distorted_init(idsprite++,
@@ -209,12 +224,26 @@ _cmdt_list_init(void)
               280, 80, //C
               248, 48, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
+        //Diagonal line different
+        _sprite_distorted_init(idsprite++,
+              208, 48, //A
+              208, 48, //B
+              240, 80, //C
+              240, 80, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
         //Same distorted than scale but rotated 45degrees
         _sprite_distorted_init(idsprite++,
               288, 24, //A
               304, 8, //B
               320, 24, //C
               304, 40, //D
+              SPRITE_WIDTH, SPRITE_HEIGHT );
+              //Different 45 degree, just below. Does they stick together? the should
+        _sprite_distorted_init(idsprite++,
+              320, 57, //A
+              304, 41,  //B
+              288, 57, //C
+              304, 73, //D
               SPRITE_WIDTH, SPRITE_HEIGHT );
 
         vdp1_cmdt_system_clip_coord_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX]);

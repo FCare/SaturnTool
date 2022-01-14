@@ -23,7 +23,7 @@
 #define SPRITE_COLOR_WAIT           COLOR_RGB1555(1, 31,  0,  0)
 #define SPRITE_COLOR_HIGHLIGHT      COLOR_RGB1555(1,  0, 31,  0)
 
-#define NB_TEST 15
+#define NB_TEST 16
 
 #define VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX        0
 #define VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX              1
@@ -195,6 +195,13 @@ _cmdt_list_init(void)
                 232, 16, //B
                 232, 17, //C
                 200, 17, //D
+                SPRITE_WIDTH, SPRITE_HEIGHT );
+          //Horizontal line Sega Rally aileron
+          _sprite_distorted_init(idsprite++,
+                205, 120, //A
+                146, 120, //B
+                148, 120, //C
+                203, 120, //D
                 SPRITE_WIDTH, SPRITE_HEIGHT );
         //Vertical line
         _sprite_distorted_init(idsprite++,

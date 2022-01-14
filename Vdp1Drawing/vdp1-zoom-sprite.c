@@ -23,7 +23,7 @@
 #define SPRITE_COLOR_WAIT           COLOR_RGB1555(1, 31,  0,  0)
 #define SPRITE_COLOR_HIGHLIGHT      COLOR_RGB1555(1,  0, 31,  0)
 
-#define NB_TEST 16
+#define NB_TEST 17
 
 #define VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX        0
 #define VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX              1
@@ -56,9 +56,9 @@ static void _init(void);
 static void _cmdt_list_init(void);
 
 static void textureInit();
-static void _sprite_normal_init(int id, int x, int y, int w, int h);
-static void _sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h);
-static void _sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h);
+static void _sprite_normal_init(int id, int x, int y, int w, int h, int texId);
+static void _sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h, int texId);
+static void _sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h, int texId);
 
 static uint32_t _frame_time_calculate(void);
 
@@ -155,39 +155,39 @@ _cmdt_list_init(void)
 
         int idsprite = VDP1_CMDT_ORDER_NORMAL_INDEX;
         textureInit();
-        _sprite_normal_init(idsprite++, 40, 40, SPRITE_WIDTH, SPRITE_HEIGHT );
+        _sprite_normal_init(idsprite++, 40, 40, SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         _sprite_scale_init(idsprite++,
               80, 8, //A
               112, 40, //C
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Same distorted than scale
         _sprite_distorted_init(idsprite++,
               120, 8, //A
               152, 8, //B
               152, 40, //C
               120, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Same distorted than scale but rotated 90degrees
         _sprite_distorted_init(idsprite++,
               160, 40, //A
               160, 8, //B
               192, 8, //C
               192, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Point
         _sprite_distorted_init(idsprite++,
               194, 48, //A
               194, 48, //B
               194, 48, //C
               194, 48, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Horizontal line
         _sprite_distorted_init(idsprite++,
               200, 8, //A
               232, 8, //B
               232, 8, //C
               200, 8, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
 
           //Horizontal line 2 pixels
           _sprite_distorted_init(idsprite++,
@@ -195,70 +195,76 @@ _cmdt_list_init(void)
                 232, 16, //B
                 232, 17, //C
                 200, 17, //D
-                SPRITE_WIDTH, SPRITE_HEIGHT );
+                SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
           //Horizontal line Sega Rally aileron
           _sprite_distorted_init(idsprite++,
                 205, 120, //A
                 146, 120, //B
                 148, 120, //C
                 203, 120, //D
-                SPRITE_WIDTH, SPRITE_HEIGHT );
+                SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Vertical line
         _sprite_distorted_init(idsprite++,
               240, 8, //A
               240, 40, //B
               240, 40, //C
               240, 8, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Vertical line different
         _sprite_distorted_init(idsprite++,
               260, 8, //A
               260, 8, //B
               260, 40, //C
               260, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Vertical line different
         _sprite_distorted_init(idsprite++,
               264, 8, //A
               264, 24, //B
               264, 24, //C
               264, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Diagonal line
         _sprite_distorted_init(idsprite++,
               248, 48, //A
               280, 80, //B
               280, 80, //C
               248, 48, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Diagonal line different
         _sprite_distorted_init(idsprite++,
               208, 48, //A
               208, 48, //B
               240, 80, //C
               240, 80, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Same distorted than scale but rotated 45degrees
         _sprite_distorted_init(idsprite++,
               288, 24, //A
               304, 8, //B
               320, 24, //C
               304, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Different 45 degree, just below. Does they stick together? the should
         _sprite_distorted_init(idsprite++,
               320, 57, //A
               304, 41,  //B
               288, 57, //C
               304, 73, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
         //Concave sprite
         _sprite_distorted_init(idsprite++,
               20, 120, //A
               36, 136,  //B
               68, 152, //C
               52, 136, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT );
+              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
+
+        //Life bar content in Akumajou X
+        _sprite_scale_init(idsprite++,
+          4, 116,
+          12, 86,
+          SPRITE_WIDTH, SPRITE_HEIGHT, 1 );
 
         vdp1_cmdt_system_clip_coord_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX]);
         vdp1_cmdt_param_vertex_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX],
@@ -332,7 +338,7 @@ static void textureInit() {
 }
 
 static void
-_sprite_normal_init(int id, int x, int y, int w, int h)
+_sprite_normal_init(int id, int x, int y, int w, int h, int texId)
 {
         const vdp1_cmdt_draw_mode_t draw_mode = {
                 .bits.trans_pixel_disable = true,
@@ -348,7 +354,7 @@ _sprite_normal_init(int id, int x, int y, int w, int h)
         _position.y = y-h/2;
         _sprite.cmdt = &_cmdt_list->cmdts[id];
 
-        _sprite.tex_base = TEXTURE_BASE;
+        _sprite.tex_base = TEXTURE_BASE + 0x1000 * texId;
         _sprite.pal_base = TEXTURE_PAL;
 
         vdp1_cmdt_normal_sprite_set(_sprite.cmdt);
@@ -361,7 +367,7 @@ _sprite_normal_init(int id, int x, int y, int w, int h)
 }
 
 static void
-_sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h) {
+_sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h, int texId) {
   const vdp1_cmdt_draw_mode_t draw_mode = {
           .bits.trans_pixel_disable = true,
           .bits.pre_clipping_disable = true,
@@ -374,7 +380,7 @@ _sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h) {
   int16_vec2_t _position;
   _sprite.cmdt = &_cmdt_list->cmdts[id];
 
-  _sprite.tex_base = TEXTURE_BASE;
+  _sprite.tex_base = TEXTURE_BASE + 0x1000 * texId;
   _sprite.pal_base = (void *)TEXTURE_PAL;
 
   vdp1_cmdt_scaled_sprite_set(_sprite.cmdt);
@@ -393,7 +399,7 @@ _sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h) {
 }
 
 static void
-_sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h) {
+_sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h, int texId) {
   const vdp1_cmdt_draw_mode_t draw_mode = {
           .bits.trans_pixel_disable = true,
           .bits.pre_clipping_disable = true,
@@ -406,7 +412,7 @@ _sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, i
   int16_vec2_t _position;
   _sprite.cmdt = &_cmdt_list->cmdts[id];
 
-  _sprite.tex_base = TEXTURE_BASE;
+  _sprite.tex_base = TEXTURE_BASE + texId * 0x1000;
   _sprite.pal_base = (void *)TEXTURE_PAL;
 
   vdp1_cmdt_distorted_sprite_set(_sprite.cmdt);

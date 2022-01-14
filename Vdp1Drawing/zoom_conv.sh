@@ -7,13 +7,13 @@ PNG_OPTS="-define png:include-chunk=none -strip"
 # Extract from zoom.png into 64x128 PNG images, then append them all
 # vertically into zoom_appended.png
 cd data
-rm -f zoom_[0-9][0-9].png
+# rm -f zoom_[0-9][0-9].png
 rm -f zoom_appended.png
-for x in `seq 0 0`; do
-    zoom=`echo "$x*75" | bc`
-    in=`printf "zoom_%02i.png" "$x"`
-    convert -extract 64x64+"${zoom}"+0 "zoom.png" +repage -size 64x64 ${PNG_OPTS} "${in}"
-done
+# for x in `seq 0 1`; do
+#     zoom=`echo "$x*75" | bc`
+#     in=`printf "zoom_%02i.png" "$x"`
+#     convert -extract 64x64+"${zoom}"+0 "zoom.png" +repage -size 64x64 ${PNG_OPTS} "${in}"
+# done
 convert -append zoom_*.png ${PNG_OPTS} zoom_appended.png
 cd ..
 

@@ -1,6 +1,6 @@
+-.ccls-cache/
 -.rtags/
 -cd/
--romdisk/
 -*.BIN
 -*.asm
 -*.bin
@@ -13,6 +13,5 @@
 -*.map
 -*.map
 -*.o
--*.romdisk
 -*.sym
 -*.s

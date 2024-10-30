@@ -13,66 +13,119 @@
 #define SCREEN_WIDTH    320
 #define SCREEN_HEIGHT   240
 
-#define ZOOM_TEX_PATH   "ZOOM.TEX"
-#define ZOOM_PAL_PATH   "ZOOM.PAL"
+#define STATE_ZOOM_MOVE_INVALID         (-1)
+#define STATE_ZOOM_MOVE_ORIGIN          (0)
+#define STATE_ZOOM_WAIT                 (1)
+#define STATE_ZOOM_MOVE_ANCHOR          (2)
+#define STATE_ZOOM_RELEASE_BUTTONS      (3)
+#define STATE_ZOOM_SELECT_ANCHOR        (4)
 
-#define SPRITE_WIDTH                (64)
-#define SPRITE_HEIGHT               (64)
-#define SPRITE_POINTER_SIZE         (3)
-#define SPRITE_COLOR_SELECT         COLOR_RGB1555(1,  0,  0, 31)
-#define SPRITE_COLOR_WAIT           COLOR_RGB1555(1, 31,  0,  0)
-#define SPRITE_COLOR_HIGHLIGHT      COLOR_RGB1555(1,  0, 31,  0)
-
-#define NB_TEST 17
+#define ZOOM_POINT_WIDTH                (64)
+#define ZOOM_POINT_HEIGHT               (102)
+#define ZOOM_POINT_POINTER_SIZE         (3)
+#define ZOOM_POINT_COLOR_SELECT         RGB1555(1,  0,  0, 31)
+#define ZOOM_POINT_COLOR_WAIT           RGB1555(1, 31,  0,  0)
+#define ZOOM_POINT_COLOR_HIGHLIGHT      RGB1555(1,  0, 31,  0)
 
 #define VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX        0
-#define VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX              1
-#define VDP1_CMDT_ORDER_NORMAL_INDEX                    2
-#define VDP1_CMDT_ORDER_DRAW_END_INDEX                  (VDP1_CMDT_ORDER_NORMAL_INDEX + NB_TEST)
-#define VDP1_CMDT_ORDER_COUNT                           (VDP1_CMDT_ORDER_DRAW_END_INDEX + 1)
+#define VDP1_CMDT_ORDER_CLEAR_LOCAL_COORDS_INDEX        1
+#define VDP1_CMDT_ORDER_CLEAR_POLYGON_INDEX             2
+#define VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX              3
+#define VDP1_CMDT_ORDER_SPRITE_INDEX                    4
+#define VDP1_CMDT_ORDER_POLYGON_POINTER_INDEX           5
+#define VDP1_CMDT_ORDER_DRAW_END_INDEX                  6
+#define VDP1_CMDT_ORDER_COUNT                           7
 
+#define ANIMATION_FRAME_COUNT    (14)
+#define ANIMATION_FRAME_DURATION (3)
 
-#define TEXTURE_BASE (_vdp1_vram_partitions.texture_base)
-#define TEXTURE_PAL ((void *)VDP2_CRAM_MODE_1_OFFSET(1, 0, 0x0000))
-
-extern uint8_t root_romdisk[];
+/* Zoom state */
+static int32_t _state_zoom = STATE_ZOOM_MOVE_ORIGIN;
+static int16_vec2_t _display = INT16_VEC2_INITIALIZER(ZOOM_POINT_WIDTH, ZOOM_POINT_HEIGHT);
+static int16_vec2_t _zoom_point = INT16_VEC2_INITIALIZER(0, 0);
+static uint16_t _zoom_point_value = VDP1_CMDT_ZOOM_POINT_CENTER;
+static uint32_t _delay_frames = 0;
+static smpc_peripheral_digital_t _digital;
 
 static struct {
+        int16_vec2_t position;
+        rgb1555_t color;
+
+        vdp1_cmdt_t *cmdt;
+} _polygon_pointer;
+
+static struct {
+        uint16_t anim_frame;
+        uint16_t anim_counter;
+
         uint16_t *tex_base;
         uint16_t *pal_base;
 
         vdp1_cmdt_t *cmdt;
 } _sprite;
 
-static void *_romdisk = NULL;
+extern uint8_t asset_zoom_tex[];
+extern uint8_t asset_zoom_tex_end[];
+extern const uint8_t asset_zoom_pal[];
+extern const uint8_t asset_zoom_pal_end[];
 
 static vdp1_cmdt_list_t *_cmdt_list = NULL;
 static vdp1_vram_partitions_t _vdp1_vram_partitions;
 
 static volatile uint32_t _frt_count = 0;
 
+static inline bool __always_inline
+_digital_dirs_pressed(void)
+{
+        return (_digital.pressed.raw & PERIPHERAL_DIGITAL_DIRECTIONS) != 0x0000;
+}
+
 static void _init(void);
 
 static void _cmdt_list_init(void);
 
-static void textureInit();
-static void _sprite_normal_init(int id, int x, int y, int w, int h, int texId);
-static void _sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h, int texId);
-static void _sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h, int texId);
+static void _state_zoom_move_origin(void);
+static void _state_zoom_wait(void);
+static void _state_zoom_move_anchor(void);
+static void _state_zoom_release_buttons(void);
+static void _state_zoom_select_anchor(void);
+
+static void _sprite_init(void);
+static void _sprite_config(void);
+static void _polygon_pointer_init(void);
+static void _polygon_pointer_config(void);
 
 static uint32_t _frame_time_calculate(void);
 
+static void _vblank_out_handler(void *);
 static void _cpu_frt_ovi_handler(void);
 
 int
 main(void)
 {
+        static void (*const _state_zoom_funcs[])(void) = {
+                _state_zoom_move_origin,
+                _state_zoom_wait,
+                _state_zoom_move_anchor,
+                _state_zoom_release_buttons,
+                _state_zoom_select_anchor
+        };
+
         _init();
+
+        _sprite_config();
+        _polygon_pointer_config();
 
         cpu_frt_count_set(0);
 
         while (true) {
+                smpc_peripheral_process();
+                smpc_peripheral_digital_port(1, &_digital);
 
+                _state_zoom_funcs[_state_zoom]();
+
+                _sprite_config();
+                _polygon_pointer_config();
 
                 vdp1_sync_cmdt_list_put(_cmdt_list, 0);
 
@@ -98,11 +151,13 @@ main(void)
 void
 user_init(void)
 {
+        smpc_peripheral_init();
+
         vdp2_tvmd_display_res_set(VDP2_TVMD_INTERLACE_NONE, VDP2_TVMD_HORZ_NORMAL_A,
             VDP2_TVMD_VERT_240);
 
-        vdp2_scrn_back_screen_color_set(VDP2_VRAM_ADDR(3, 0x01FFFE),
-            COLOR_RGB1555(1, 0x10, 0x10, 0x10));
+        vdp2_scrn_back_color_set(VDP2_VRAM_ADDR(3, 0x01FFFE),
+            RGB1555(1, 0, 3, 15));
 
         vdp2_sprite_priority_set(0, 6);
 
@@ -110,6 +165,8 @@ user_init(void)
         vdp1_env_default_set();
 
         vdp2_tvmd_display_set();
+
+        vdp_sync_vblank_out_set(_vblank_out_handler, NULL);
 
         cpu_frt_init(CPU_FRT_CLOCK_DIV_32);
         cpu_frt_ovi_set(_cpu_frt_ovi_handler);
@@ -123,13 +180,9 @@ user_init(void)
 static void
 _init(void)
 {
+        dbgio_init();
         dbgio_dev_default_init(DBGIO_DEV_VDP2_ASYNC);
         dbgio_dev_font_load();
-
-        romdisk_init();
-
-        _romdisk = romdisk_mount(root_romdisk);
-        assert(_romdisk != NULL);
 
         _cmdt_list_init();
 }
@@ -141,8 +194,23 @@ _cmdt_list_init(void)
             INT16_VEC2_INITIALIZER(SCREEN_WIDTH - 1,
                                    SCREEN_HEIGHT - 1);
 
+        static const int16_vec2_t local_coord_ul =
+            INT16_VEC2_INITIALIZER(0, 0);
+
         static const int16_vec2_t local_coord_center =
-            INT16_VEC2_INITIALIZER(0,0);
+            INT16_VEC2_INITIALIZER(SCREEN_WIDTH / 2,
+                                   SCREEN_HEIGHT / 2);
+
+        static const vdp1_cmdt_draw_mode_t polygon_draw_mode = {
+                .pre_clipping_disable = true
+        };
+
+        static const int16_vec2_t polygon_points[] = {
+                INT16_VEC2_INITIALIZER(               0, SCREEN_HEIGHT - 1),
+                INT16_VEC2_INITIALIZER(SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1),
+                INT16_VEC2_INITIALIZER(SCREEN_WIDTH - 1,                 0),
+                INT16_VEC2_INITIALIZER(               0,                 0)
+        };
 
         _cmdt_list = vdp1_cmdt_list_alloc(VDP1_CMDT_ORDER_COUNT);
 
@@ -153,128 +221,30 @@ _cmdt_list_init(void)
         vdp1_cmdt_t * const cmdts =
             &_cmdt_list->cmdts[0];
 
-        int idsprite = VDP1_CMDT_ORDER_NORMAL_INDEX;
-        textureInit();
-        _sprite_normal_init(idsprite++, 40, 40, SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        _sprite_scale_init(idsprite++,
-              80, 8, //A
-              112, 40, //C
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Same distorted than scale
-        _sprite_distorted_init(idsprite++,
-              120, 8, //A
-              152, 8, //B
-              152, 40, //C
-              120, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Same distorted than scale but rotated 90degrees
-        _sprite_distorted_init(idsprite++,
-              160, 40, //A
-              160, 8, //B
-              192, 8, //C
-              192, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Point
-        _sprite_distorted_init(idsprite++,
-              194, 48, //A
-              194, 48, //B
-              194, 48, //C
-              194, 48, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Horizontal line
-        _sprite_distorted_init(idsprite++,
-              200, 8, //A
-              232, 8, //B
-              232, 8, //C
-              200, 8, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
+        _sprite.cmdt = &cmdts[VDP1_CMDT_ORDER_SPRITE_INDEX];
+        _polygon_pointer.cmdt = &cmdts[VDP1_CMDT_ORDER_POLYGON_POINTER_INDEX];
 
-          //Horizontal line 2 pixels
-          _sprite_distorted_init(idsprite++,
-                200, 16, //A
-                232, 16, //B
-                232, 17, //C
-                200, 17, //D
-                SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-          //Horizontal line Sega Rally aileron
-          _sprite_distorted_init(idsprite++,
-                205, 120, //A
-                146, 120, //B
-                148, 120, //C
-                203, 120, //D
-                SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Vertical line
-        _sprite_distorted_init(idsprite++,
-              240, 8, //A
-              240, 40, //B
-              240, 40, //C
-              240, 8, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Vertical line different
-        _sprite_distorted_init(idsprite++,
-              260, 8, //A
-              260, 8, //B
-              260, 40, //C
-              260, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Vertical line different
-        _sprite_distorted_init(idsprite++,
-              264, 8, //A
-              264, 24, //B
-              264, 24, //C
-              264, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Diagonal line
-        _sprite_distorted_init(idsprite++,
-              248, 48, //A
-              280, 80, //B
-              280, 80, //C
-              248, 48, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Diagonal line different
-        _sprite_distorted_init(idsprite++,
-              208, 48, //A
-              208, 48, //B
-              240, 80, //C
-              240, 80, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Same distorted than scale but rotated 45degrees
-        _sprite_distorted_init(idsprite++,
-              288, 24, //A
-              304, 8, //B
-              320, 24, //C
-              304, 40, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Different 45 degree, just below. Does they stick together? the should
-        _sprite_distorted_init(idsprite++,
-              320, 57, //A
-              304, 41,  //B
-              288, 57, //C
-              304, 73, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-        //Concave sprite
-        _sprite_distorted_init(idsprite++,
-              20, 120, //A
-              36, 136,  //B
-              68, 152, //C
-              52, 136, //D
-              SPRITE_WIDTH, SPRITE_HEIGHT, 0 );
-
-        //Life bar content in Akumajou X
-        _sprite_scale_init(idsprite++,
-          4, 116,
-          12, 86,
-          SPRITE_WIDTH, SPRITE_HEIGHT, 1 );
+        _polygon_pointer_init();
+        _sprite_init();
 
         vdp1_cmdt_system_clip_coord_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX]);
-        vdp1_cmdt_param_vertex_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX],
-            CMDT_VTX_SYSTEM_CLIP,
-            &system_clip_coord);
+        vdp1_cmdt_vtx_system_clip_coord_set(&cmdts[VDP1_CMDT_ORDER_SYSTEM_CLIP_COORDS_INDEX],
+            system_clip_coord);
+
+        vdp1_cmdt_local_coord_set(&cmdts[VDP1_CMDT_ORDER_CLEAR_LOCAL_COORDS_INDEX]);
+        vdp1_cmdt_vtx_local_coord_set(&cmdts[VDP1_CMDT_ORDER_CLEAR_LOCAL_COORDS_INDEX],
+            local_coord_ul);
+
+        vdp1_cmdt_polygon_set(&cmdts[VDP1_CMDT_ORDER_CLEAR_POLYGON_INDEX]);
+        vdp1_cmdt_draw_mode_set(&cmdts[VDP1_CMDT_ORDER_CLEAR_POLYGON_INDEX],
+            polygon_draw_mode);
+        vdp1_cmdt_vtx_set(&cmdts[VDP1_CMDT_ORDER_CLEAR_POLYGON_INDEX],
+            polygon_points);
+        vdp1_cmdt_jump_skip_next(&cmdts[VDP1_CMDT_ORDER_CLEAR_POLYGON_INDEX]);
 
         vdp1_cmdt_local_coord_set(&cmdts[VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX]);
-        vdp1_cmdt_param_vertex_set(&cmdts[VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX],
-            CMDT_VTX_LOCAL_COORD,
-            &local_coord_center);
+        vdp1_cmdt_vtx_local_coord_set(&cmdts[VDP1_CMDT_ORDER_LOCAL_COORDS_INDEX],
+            local_coord_center);
 
         vdp1_cmdt_end_set(&cmdts[VDP1_CMDT_ORDER_DRAW_END_INDEX]);
 }
@@ -282,27 +252,14 @@ _cmdt_list_init(void)
 static uint32_t
 _frame_time_calculate(void)
 {
-        uint16_t frt;
-        frt = cpu_frt_count_get();
+        const uint16_t frt = cpu_frt_count_get();
 
         cpu_frt_count_set(0);
 
-        uint32_t delta_fix;
-        delta_fix = frt << 4;
+        const uint32_t delta_fix = frt << 8;
+        const uint32_t divisor_fix = CPU_FRT_NTSC_320_32_COUNT_1MS << 4;
 
-        uint32_t divisor_fix;
-        divisor_fix = CPU_FRT_NTSC_320_32_COUNT_1MS << 4;
-
-        cpu_divu_32_32_set(delta_fix << 4, divisor_fix);
-
-        /* Remember to wait ~40 cycles */
-        for (uint32_t i = 0; i < 8; i++) {
-                cpu_instr_nop();
-                cpu_instr_nop();
-                cpu_instr_nop();
-                cpu_instr_nop();
-                cpu_instr_nop();
-        }
+        cpu_divu_32_32_set(delta_fix, divisor_fix);
 
         uint32_t result;
         result = cpu_divu_quotient_get();
@@ -311,129 +268,351 @@ _frame_time_calculate(void)
         return result;
 }
 
-static int loaded = 0;
-static void textureInit() {
-  if (loaded == 0) {
-
-    void *fh[2];
-    void *p;
-    size_t len;
-
-    fh[0] = romdisk_open(_romdisk, ZOOM_TEX_PATH);
-    assert(fh[0] != NULL);
-    p = romdisk_direct(fh[0]);
-    len = romdisk_total(fh[0]);
-    scu_dma_transfer(0, TEXTURE_BASE, p, len);
-
-    fh[1] = romdisk_open(_romdisk, ZOOM_PAL_PATH);
-    assert(fh[1] != NULL);
-    p = romdisk_direct(fh[1]);
-    len = romdisk_total(fh[1]);
-    scu_dma_transfer(0, TEXTURE_PAL, p, len);
-
-    romdisk_close(fh[0]);
-    romdisk_close(fh[1]);
-    loaded = 1;
-  }
-}
-
 static void
-_sprite_normal_init(int id, int x, int y, int w, int h, int texId)
+_sprite_init(void)
 {
+        _sprite.anim_frame = 0;
+        _sprite.anim_counter = 0;
+
+        _sprite.tex_base = _vdp1_vram_partitions.texture_base;
+        _sprite.pal_base = (void *)VDP2_CRAM_MODE_1_OFFSET(1, 0, 0x0000);
+
         const vdp1_cmdt_draw_mode_t draw_mode = {
-                .bits.trans_pixel_disable = true,
-                .bits.pre_clipping_disable = true,
-                .bits.end_code_disable = true
+                .trans_pixel_disable  = true,
+                .pre_clipping_disable = true,
+                .end_code_disable     = true
         };
 
         const vdp1_cmdt_color_bank_t color_bank = {
-                .type_0.data.dc = 0x0100
+                .type_0.dc = 0x0100
         };
-        int16_vec2_t _position;
-        _position.x = x-w/2;
-        _position.y = y-h/2;
-        _sprite.cmdt = &_cmdt_list->cmdts[id];
 
-        _sprite.tex_base = TEXTURE_BASE + 0x1000 * texId;
-        _sprite.pal_base = TEXTURE_PAL;
+        vdp1_cmdt_scaled_sprite_set(_sprite.cmdt);
+        vdp1_cmdt_draw_mode_set(_sprite.cmdt, draw_mode);
+        vdp1_cmdt_color_mode4_set(_sprite.cmdt, color_bank);
 
-        vdp1_cmdt_normal_sprite_set(_sprite.cmdt);
-        vdp1_cmdt_param_char_base_set(_sprite.cmdt, (uint32_t)_sprite.tex_base);
-        vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_NORMAL_SPRITE, &_position);
-        vdp1_cmdt_param_size_set(_sprite.cmdt, w, h);
+        vdp1_cmdt_char_size_set(_sprite.cmdt, ZOOM_POINT_WIDTH, ZOOM_POINT_HEIGHT);
 
-        vdp1_cmdt_param_draw_mode_set(_sprite.cmdt, draw_mode);
-        vdp1_cmdt_param_color_mode4_set(_sprite.cmdt, color_bank);
+        scu_dma_transfer(0, _sprite.tex_base, asset_zoom_tex, asset_zoom_tex_end - asset_zoom_tex);
+        scu_dma_transfer(0, _sprite.pal_base, asset_zoom_pal, asset_zoom_pal_end - asset_zoom_pal);
 }
 
 static void
-_sprite_scale_init(int id, int x0, int y0, int x1, int y1, int w, int h, int texId) {
-  const vdp1_cmdt_draw_mode_t draw_mode = {
-          .bits.trans_pixel_disable = true,
-          .bits.pre_clipping_disable = true,
-          .bits.end_code_disable = true
-  };
+_sprite_config(void)
+{
+        const uint32_t offset =
+            _sprite.anim_frame * (ZOOM_POINT_WIDTH * ZOOM_POINT_HEIGHT);
 
-  const vdp1_cmdt_color_bank_t color_bank = {
-          .type_0.data.dc = 0x0100
-  };
-  int16_vec2_t _position;
-  _sprite.cmdt = &_cmdt_list->cmdts[id];
+        vdp1_cmdt_char_base_set(_sprite.cmdt, (uint32_t)_sprite.tex_base + offset);
 
-  _sprite.tex_base = TEXTURE_BASE + 0x1000 * texId;
-  _sprite.pal_base = (void *)TEXTURE_PAL;
+        vdp1_cmdt_zoom_set(_sprite.cmdt, _zoom_point_value);
+        vdp1_cmdt_vtx_zoom_point_set(_sprite.cmdt, _zoom_point);
+        vdp1_cmdt_vtx_zoom_display_set(_sprite.cmdt, _display);
 
-  vdp1_cmdt_scaled_sprite_set(_sprite.cmdt);
-  vdp1_cmdt_param_char_base_set(_sprite.cmdt, (uint32_t)_sprite.tex_base);
-  _position.x = x0;
-  _position.y = y0;
-  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_SCALE_SPRITE_UL, &_position);
-  _position.x = x1;
-  _position.y = y1;
-  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_SCALE_SPRITE_LR, &_position);
-  vdp1_cmdt_param_size_set(_sprite.cmdt, w, h);
+        if (_sprite.anim_counter == 0) {
+                _sprite.anim_counter = ANIMATION_FRAME_DURATION;
 
-  vdp1_cmdt_param_draw_mode_set(_sprite.cmdt, draw_mode);
-  vdp1_cmdt_param_color_mode4_set(_sprite.cmdt, color_bank);
-
+                _sprite.anim_frame++;
+                if (_sprite.anim_frame >= ANIMATION_FRAME_COUNT) {
+                        _sprite.anim_frame = 0;
+                }
+        } else {
+                _sprite.anim_counter--;
+        }
 }
 
 static void
-_sprite_distorted_init(int id, int xa, int ya, int xb, int yb, int xc, int yc, int xd, int yd, int w, int h, int texId) {
-  const vdp1_cmdt_draw_mode_t draw_mode = {
-          .bits.trans_pixel_disable = true,
-          .bits.pre_clipping_disable = true,
-          .bits.end_code_disable = true
-  };
+_polygon_pointer_init(void)
+{
+        static const vdp1_cmdt_draw_mode_t draw_mode = {
+                .pre_clipping_disable = true
+        };
 
-  const vdp1_cmdt_color_bank_t color_bank = {
-          .type_0.data.dc = 0x0100
-  };
-  int16_vec2_t _position;
-  _sprite.cmdt = &_cmdt_list->cmdts[id];
+        vdp1_cmdt_polygon_set(_polygon_pointer.cmdt);
+        vdp1_cmdt_draw_mode_set(_polygon_pointer.cmdt, draw_mode);
+}
 
-  _sprite.tex_base = TEXTURE_BASE + texId * 0x1000;
-  _sprite.pal_base = (void *)TEXTURE_PAL;
+static void
+_polygon_pointer_config(void)
+{
+        int16_vec2_t points[4];
 
-  vdp1_cmdt_distorted_sprite_set(_sprite.cmdt);
-  vdp1_cmdt_param_char_base_set(_sprite.cmdt, (uint32_t)_sprite.tex_base);
-  _position.x = xa;
-  _position.y = ya;
-  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_A, &_position);
-  _position.x = xb;
-  _position.y = yb;
-  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_B, &_position);
-  _position.x = xc;
-  _position.y = yc;
-  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_C, &_position);
-  _position.x = xd;
-  _position.y = yd;
-  vdp1_cmdt_param_vertex_set(_sprite.cmdt, CMDT_VTX_DISTORTED_SPRITE_D, &_position);
-  vdp1_cmdt_param_size_set(_sprite.cmdt, w, h);
+        points[0].x =  ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.x - 1;
+        points[0].y = -ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.y;
+        points[1].x =  ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.x - 1;
+        points[1].y =  ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.y - 1;
+        points[2].x = -ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.x;
+        points[2].y =  ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.y - 1;
+        points[3].x = -ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.x;
+        points[3].y = -ZOOM_POINT_POINTER_SIZE + _polygon_pointer.position.y;
 
-  vdp1_cmdt_param_draw_mode_set(_sprite.cmdt, draw_mode);
-  vdp1_cmdt_param_color_mode4_set(_sprite.cmdt, color_bank);
+        vdp1_cmdt_vtx_set(_polygon_pointer.cmdt, points);
 
+        vdp1_cmdt_color_set(_polygon_pointer.cmdt, _polygon_pointer.color);
+}
+
+static void
+_state_zoom_move_origin(void)
+{
+        _polygon_pointer.position.x = 0;
+        _polygon_pointer.position.y = 0;
+
+        _display.x = ZOOM_POINT_WIDTH - 1;
+        _display.y = ZOOM_POINT_HEIGHT - 1;
+
+        _zoom_point_value = VDP1_CMDT_ZOOM_POINT_CENTER;
+        _zoom_point.x = 0;
+        _zoom_point.y = 0;
+
+        _polygon_pointer.color = ZOOM_POINT_COLOR_SELECT;
+
+        _delay_frames = 0;
+
+        if (_digital_dirs_pressed()) {
+                _state_zoom = STATE_ZOOM_WAIT;
+        } else if ((_digital.held.button.a) != 0) {
+                _state_zoom = STATE_ZOOM_RELEASE_BUTTONS;
+        }
+}
+
+static void
+_state_zoom_wait(void)
+{
+        _delay_frames++;
+
+        if (_delay_frames > 9) {
+                _delay_frames = 0;
+                _state_zoom = STATE_ZOOM_MOVE_ANCHOR;
+        } else if (!(_digital_dirs_pressed())) {
+                _delay_frames = 0;
+                _state_zoom = STATE_ZOOM_MOVE_ORIGIN;
+        }
+}
+
+static void
+_state_zoom_move_anchor(void)
+{
+        _polygon_pointer.position.x = 0;
+        _polygon_pointer.position.y = 0;
+
+        if ((_digital.pressed.raw & PERIPHERAL_DIGITAL_LEFT) != 0) {
+                _polygon_pointer.position.x = -_display.x / 2;
+        }
+
+        if ((_digital.pressed.raw & PERIPHERAL_DIGITAL_RIGHT) != 0) {
+                _polygon_pointer.position.x = _display.x / 2;
+        }
+
+        if ((_digital.pressed.raw & PERIPHERAL_DIGITAL_UP) != 0) {
+                _polygon_pointer.position.y = -_display.y / 2;
+        }
+
+        if ((_digital.pressed.raw & PERIPHERAL_DIGITAL_DOWN) != 0) {
+                _polygon_pointer.position.y = _display.y / 2;
+        }
+
+        /* Determine the zoom point */
+        bool x_center;
+        x_center = _polygon_pointer.position.x == 0;
+        bool x_left;
+        x_left = _polygon_pointer.position.x < 0;
+        bool x_right;
+        x_right = _polygon_pointer.position.x > 0;
+
+        bool y_center;
+        y_center = _polygon_pointer.position.y == 0;
+        bool y_up;
+        y_up = _polygon_pointer.position.y < 0;
+        bool y_down;
+        y_down = _polygon_pointer.position.y > 0;
+
+        if (x_center && y_up) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_UPPER_CENTER;
+                _zoom_point.x = 0;
+                _zoom_point.y = -((ZOOM_POINT_HEIGHT / 2) - 1);
+        } else if (x_center && y_down) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_LOWER_CENTER;
+                _zoom_point.x = 0;
+                _zoom_point.y = ZOOM_POINT_HEIGHT / 2;
+        } else if (y_center && x_left) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_CENTER_LEFT;
+                _zoom_point.x = -((ZOOM_POINT_WIDTH / 2) - 1);
+                _zoom_point.y = 0;
+        } else if (y_center && x_right) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_CENTER_RIGHT;
+                _zoom_point.x = ZOOM_POINT_WIDTH / 2;
+                _zoom_point.y = 0;
+        } else if (y_up && x_left) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_UPPER_LEFT;
+                _zoom_point.x = -((ZOOM_POINT_WIDTH / 2) - 1);
+                _zoom_point.y = -((ZOOM_POINT_HEIGHT / 2) - 1);
+        } else if (y_up && x_right) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_UPPER_RIGHT;
+                _zoom_point.x = ZOOM_POINT_WIDTH / 2;
+                _zoom_point.y = -((ZOOM_POINT_HEIGHT / 2) - 1);
+        } else if (y_down && x_left) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_LOWER_LEFT;
+                _zoom_point.x = -((ZOOM_POINT_WIDTH / 2) - 1);
+                _zoom_point.y = ZOOM_POINT_HEIGHT / 2;
+        } else if (y_down && x_right) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_LOWER_RIGHT;
+                _zoom_point.x = ZOOM_POINT_WIDTH / 2;
+                _zoom_point.y = ZOOM_POINT_HEIGHT / 2;
+        } else if (x_center && y_center) {
+                _zoom_point_value = VDP1_CMDT_ZOOM_POINT_CENTER;
+                _zoom_point.x = 0;
+                _zoom_point.y = 0;
+        }
+
+        if (!(_digital_dirs_pressed())) {
+                _state_zoom = STATE_ZOOM_MOVE_ORIGIN;
+        } else if ((_digital.held.button.a) != 0) {
+                _state_zoom = STATE_ZOOM_RELEASE_BUTTONS;
+        }
+}
+
+static void
+_state_zoom_release_buttons(void)
+{
+        _polygon_pointer.color = ZOOM_POINT_COLOR_WAIT;
+
+        if (!(_digital_dirs_pressed())) {
+                _state_zoom = STATE_ZOOM_SELECT_ANCHOR;
+        }
+}
+
+static void
+_state_zoom_select_anchor(void)
+{
+        static const struct zoom_point_boundary {
+                int16_t w_dir; /* Display width direction */
+                int16_t h_dir; /* Display height direction */
+                int16_t x_max;
+                int16_t y_max;
+                int16_t x_min;
+                int16_t y_min;
+        } _zoom_point_boundaries[] = {
+                { /* Upper left */
+                        .w_dir = 1,
+                        .h_dir = -1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = (SCREEN_WIDTH / 2) + (ZOOM_POINT_WIDTH / 2),
+                        .y_max = ZOOM_POINT_HEIGHT + ((SCREEN_HEIGHT - ZOOM_POINT_HEIGHT) / 2)
+                }, { /* Upper center */
+                        .w_dir = 1,
+                        .h_dir = -1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = SCREEN_WIDTH,
+                        .y_max = ZOOM_POINT_HEIGHT + ((SCREEN_HEIGHT - ZOOM_POINT_HEIGHT) / 2)
+                }, { /* Upper right */
+                        .w_dir = -1,
+                        .h_dir = -1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = (SCREEN_WIDTH / 2) + (ZOOM_POINT_WIDTH / 2),
+                        .y_max = ZOOM_POINT_HEIGHT + ((SCREEN_HEIGHT - ZOOM_POINT_HEIGHT) / 2)
+                }, { /* Reserved */
+                        0
+                }, { /* Center left */
+                        .w_dir = 1,
+                        .h_dir = 1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = (SCREEN_WIDTH / 2) + (ZOOM_POINT_WIDTH / 2),
+                        .y_max = SCREEN_HEIGHT
+                }, { /* Center */
+                        .w_dir = 1,
+                        .h_dir = -1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = SCREEN_WIDTH,
+                        .y_max = SCREEN_HEIGHT
+                }, { /* Center right */
+                        .w_dir = -1,
+                        .h_dir = -1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = (SCREEN_WIDTH / 2) + (ZOOM_POINT_WIDTH / 2),
+                        .y_max = SCREEN_HEIGHT
+                }, { /* Reserved */
+                        0
+                }, { /* Lower left */
+                        .w_dir = 1,
+                        .h_dir = 1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = (SCREEN_WIDTH / 2) + (ZOOM_POINT_WIDTH / 2),
+                        .y_max = ZOOM_POINT_HEIGHT + ((SCREEN_HEIGHT - ZOOM_POINT_HEIGHT) / 2)
+                }, { /* Lower center */
+                        .w_dir = 1,
+                        .h_dir = 1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = SCREEN_WIDTH,
+                        .y_max = ZOOM_POINT_HEIGHT + ((SCREEN_HEIGHT - ZOOM_POINT_HEIGHT) / 2)
+                }, { /* Lower right */
+                        .w_dir = -1,
+                        .h_dir = 1,
+                        .x_min = 0,
+                        .y_min = 0,
+                        .x_max = (SCREEN_WIDTH / 2) + (ZOOM_POINT_WIDTH / 2),
+                        .y_max = ZOOM_POINT_HEIGHT + ((SCREEN_HEIGHT - ZOOM_POINT_HEIGHT) / 2)
+                }
+        };
+
+        _polygon_pointer.color = ZOOM_POINT_COLOR_HIGHLIGHT;
+
+        uint32_t zp_idx;
+        zp_idx = _zoom_point_value - 5;
+
+        const struct zoom_point_boundary *zp_boundary;
+        zp_boundary = &_zoom_point_boundaries[zp_idx];
+
+        int16_t dw_dir;
+        dw_dir = zp_boundary->w_dir * 1;
+
+        int16_t dh_dir;
+        dh_dir = zp_boundary->h_dir * 1;
+
+        if ((_digital.pressed.button.up) != 0) {
+                if (((_display.y + dh_dir) >= zp_boundary->y_min) &&
+                    ((_display.y + dh_dir) <= zp_boundary->y_max)) {
+                        _display.y = _display.y + dh_dir;
+                }
+        }
+
+        if ((_digital.pressed.button.down) != 0) {
+                if (((_display.y - dh_dir) >= zp_boundary->y_min) &&
+                    ((_display.y - dh_dir) <= zp_boundary->y_max)) {
+                        _display.y = _display.y - dh_dir;
+                }
+        }
+
+        if ((_digital.pressed.button.left) != 0) {
+                if (((_display.x - dw_dir) >= zp_boundary->x_min) &&
+                    ((_display.x - dw_dir) <= zp_boundary->x_max)) {
+                        _display.x = _display.x - dw_dir;
+                }
+        }
+
+        if ((_digital.pressed.button.right) != 0) {
+                if (((_display.x + dw_dir) >= zp_boundary->x_min) &&
+                    ((_display.x + dw_dir) <= zp_boundary->x_max)) {
+                        _display.x = _display.x + dw_dir;
+                }
+        }
+
+        if ((_digital.held.button.b) != 0) {
+                _state_zoom = STATE_ZOOM_MOVE_ORIGIN;
+        }
+}
+
+static void
+_vblank_out_handler(void *work __unused)
+{
+        smpc_peripheral_intback_issue();
 }
 
 static void
